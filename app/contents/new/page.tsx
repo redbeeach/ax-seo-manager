@@ -9,6 +9,8 @@ export default function NewContentPage() {
   const [body, setBody] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+    const [gb5BoTable, setGb5BoTable] = useState('')
+    const [gb5WrId, setGb5WrId] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,7 +27,7 @@ export default function NewContentPage() {
       const res = await fetch('/api/contents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body }),
+        body: JSON.stringify({ title, body, gb5_bo_table: gb5BoTable, gb5_wr_id: gb5WrId }),
       })
 
       if (!res.ok) {
@@ -68,7 +70,32 @@ export default function NewContentPage() {
             placeholder="본문을 입력하세요"
           />
         </div>
-
+        <div className="grid grid-cols-2 gap-4">
+        <div>
+            <label className="block text-sm font-medium mb-1">
+            GB5 게시판명 (선택)
+            </label>
+            <input
+            type="text"
+            value={gb5BoTable}
+            onChange={(e) => setGb5BoTable(e.target.value)}
+            className="w-full border rounded-md px-3 py-2"
+            placeholder="예: test"
+            />
+        </div>
+        <div>
+            <label className="block text-sm font-medium mb-1">
+            GB5 게시글번호 (선택)
+            </label>
+            <input
+            type="text"
+            value={gb5WrId}
+            onChange={(e) => setGb5WrId(e.target.value)}
+            className="w-full border rounded-md px-3 py-2"
+            placeholder="예: 5"
+            />
+        </div>
+        </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <button

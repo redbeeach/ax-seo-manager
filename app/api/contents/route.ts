@@ -18,7 +18,7 @@ export async function GET() {
 // 생성
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { title, body: content } = body
+  const { title, body: content, gb5_bo_table, gb5_wr_id } = body
 
   if (!title || !content) {
     return NextResponse.json(
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from('contents')
-    .insert([{ title, body: content }])
+    .insert([{ title, body: content, gb5_bo_table, gb5_wr_id }])
     .select()
     .single()
 
