@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 
+const AUTHOR_NAME = process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자'
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
@@ -29,12 +31,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '콘텐츠를 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  // meta keywords: 키워드 분석 결과(주요+보조)를 합쳐서 콤마로 구분된 문자열로 생성
   const { primary, secondary } = analyzeKeywords(data.title ?? '', data.body ?? '')
   const keywords = [...primary, ...secondary.map((k) => k.word)]
-    .filter((w, i, arr) => arr.indexOf(w) === i) // 중복 제거
+    .filter((w, i, arr) => arr.indexOf(w) === i)
     .slice(0, 10)
     .join(',')
+
+  // json_ld.author.name이 있으면 그걸 우선 사용 (콘텐츠별 작성자가 다를 수 있으니),
+  // 없으면 환경변수 기본값으로 대체
+  const jsonLd = data.json_ld as Record<string, any> | null
+  const authorName = jsonLd?.author?.name || AUTHOR_NAME
 
   return NextResponse.json(
     {
@@ -44,6 +50,7 @@ export async function GET(request: NextRequest) {
       og_description: data.og_description,
       json_ld: data.json_ld,
       keywords,
+      author: authorName,
     },
     {
       headers: { 'Access-Control-Allow-Origin': '*' },
