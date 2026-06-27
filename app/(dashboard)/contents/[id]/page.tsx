@@ -5,6 +5,7 @@ import Link from 'next/link'
 import DeleteButton from '@/components/DeleteButton'
 import AiOptimizeButton from '@/components/AiOptimizeButton'
 import { calculateScores } from '@/lib/score/calculate'
+import { analyzeKeywords } from '@/lib/keywords/analyze'
 
 export async function generateMetadata({
   params,
@@ -71,6 +72,8 @@ export default async function ContentDetailPage({
     { label: 'GEO', score: scores.geo_score, items: scores.geo_breakdown },
   ]
 
+  const keywords = analyzeKeywords(content.title, content.body)
+
   return (
     <>
       {content.json_ld && (
@@ -125,7 +128,7 @@ export default async function ContentDetailPage({
 
         {/* 점수 브레이크다운 3단 */}
         {content.seo_title && (
-          <div className="mb-8 grid grid-cols-3 gap-8 border-t border-line pt-6">
+          <div className="mb-8 grid grid-cols-4 gap-8 border-t border-line pt-6">
             {breakdownColumns.map((col) => (
               <div key={col.label}>
                 <p className="mb-3 text-[15px] font-bold text-ink">
@@ -144,6 +147,59 @@ export default async function ContentDetailPage({
                 </ul>
               </div>
             ))}
+
+            {/* 키워드 분석 */}
+            <div>
+              <p className="mb-3 text-[15px] font-bold text-ink">키워드 분석</p>
+
+              <p className="mb-1 text-[12px] font-medium text-ink-hint">주요 키워드</p>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {keywords.primary.length > 0 ? (
+                  keywords.primary.map((w) => (
+                    <span
+                      key={w}
+                      className="rounded bg-surface-muted px-2 py-0.5 text-[12px] text-ink"
+                    >
+                      {w}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[12px] text-ink-hint">제목에서 추출된 키워드 없음</span>
+                )}
+              </div>
+
+              <p className="mb-1 text-[12px] font-medium text-ink-hint">보조 키워드</p>
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {keywords.secondary.length > 0 ? (
+                  keywords.secondary.map((k) => (
+                    <span
+                      key={k.word}
+                      className="rounded border border-line px-2 py-0.5 text-[12px] text-ink-secondary"
+                    >
+                      {k.word} ({k.count})
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[12px] text-ink-hint">반복되는 보조 키워드 없음</span>
+                )}
+              </div>
+
+              <p className="mb-1 text-[12px] font-medium text-ink-hint">누락 키워드</p>
+              <div className="flex flex-wrap gap-1.5">
+                {keywords.missing.length > 0 ? (
+                  keywords.missing.map((w) => (
+                    <span
+                      key={w}
+                      className="rounded border border-score-bad px-2 py-0.5 text-[12px] text-score-bad"
+                    >
+                      {w}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[12px] text-score-good">제목 키워드가 본문에 모두 포함됨</span>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
