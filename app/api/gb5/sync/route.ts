@@ -7,6 +7,11 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 export async function POST(req: NextRequest) {
   const secret = req.headers.get('x-gb5-secret')
 
+  // TEMP DEBUG - 원인 파악 후 제거
+  console.log('[gb5-sync-debug] received:', JSON.stringify(secret))
+  console.log('[gb5-sync-debug] expected:', JSON.stringify(process.env.GB5_SYNC_SECRET))
+  console.log('[gb5-sync-debug] match:', secret === process.env.GB5_SYNC_SECRET)
+
   if (secret !== process.env.GB5_SYNC_SECRET) {
     return NextResponse.json({ error: '인증 실패' }, { status: 401 })
   }
