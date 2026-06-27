@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { calculateScores } from '@/lib/score/calculate'
 
+// 사이트/저자 정보는 모든 콘텐츠에 공통이라 환경변수로 관리.
+// .env.local에 없으면 기본값으로 대체됨.
+const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'AX SEO Manager'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'
+const AUTHOR_NAME = process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자'
+const AUTHOR_JOB_TITLE = process.env.NEXT_PUBLIC_AUTHOR_JOB_TITLE || ''
+
 export async function POST(request: NextRequest) {
   try {
     const { id, title, body } = await request.json()
@@ -12,6 +19,21 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // datePublished는 콘텐츠 최초 생성일 기준 (없으면 현재 시각으로 대체)
+    let publishedAt = new Date().toISOString()
+    if (id) {
+      const { data: existing } = await supabaseAdmin
+        .from('contents')
+        .select('created_at')
+        .eq('id', id)
+        .single()
+      if (existing?.created_at) {
+        publishedAt = existing.created_at
+      }
+    }
+    const modifiedAt = new Date().toISOString()
+    const pageUrl = id ? `${SITE_URL}/contents/${id}` : SITE_URL
 
     // ⚠️ Mock 데이터 - 실제 AI 연결 전 임시 더미 데이터
     const result = {
@@ -31,7 +53,19 @@ export async function POST(request: NextRequest) {
         '@type': 'Article',
         headline: title,
         description: `${title} 관련 콘텐츠`,
-        mainEntityOfPage: id ? `https://example.com/contents/${id}` : undefined,
+        datePublished: publishedAt,
+        dateModified: modifiedAt,
+        author: {
+          '@type': 'Person',
+          name: AUTHOR_NAME,
+          ...(AUTHOR_JOB_TITLE ? { jobTitle: AUTHOR_JOB_TITLE } : {}),
+        },
+        publisher: {
+          '@type': 'Organization',
+          name: SITE_NAME,
+        },
+        url: pageUrl,
+        mainEntityOfPage: pageUrl,
       },
     }
 
@@ -61,7 +95,7 @@ export async function POST(request: NextRequest) {
           seo_score: scores.seo_score,
           aeo_score: scores.aeo_score,
           geo_score: scores.geo_score,
-          updated_at: new Date().toISOString(),
+          updated_at: modifiedAt,
         })
         .eq('id', id)
 
