@@ -3,13 +3,39 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* 디자인 토큰 */
+  --color-accent: #4F46E5;
+  --color-accent-hover: #4338CA;
+  --color-ink: #18181B;
+  --color-ink-secondary: #52525B;
+  --color-ink-hint: #71717A;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F4F4F5;
+  --color-line: #E4E4E7;
+  --color-score-good: #15803D;
+  --color-score-mid: #B45309;
+  --color-score-bad: #B91C1C;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: "Pretendard", var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
+
+  /* 여기 등록해야 bg-accent, text-ink 같은 Tailwind 클래스로 쓸 수 있음 */
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-ink: var(--color-ink);
+  --color-ink-secondary: var(--color-ink-secondary);
+  --color-ink-hint: var(--color-ink-hint);
+  --color-surface: var(--color-surface);
+  --color-surface-muted: var(--color-surface-muted);
+  --color-line: var(--color-line);
+  --color-score-good: var(--color-score-good);
+  --color-score-mid: var(--color-score-mid);
+  --color-score-bad: var(--color-score-bad);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +48,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }

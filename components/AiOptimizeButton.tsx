@@ -57,15 +57,18 @@ export default function AiOptimizeButton({
   }
 
   return (
-    <div className="mb-4">
+    <div>
       <button
         onClick={handleOptimize}
         disabled={loading}
-        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50"
+        className="flex h-10 items-center gap-1.5 rounded bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
       >
-        {loading ? 'AI 분석 중... (몇 초 걸려요)' : '✨ AI 최적화 실행'}
+        <span aria-hidden>✨</span>
+        {loading ? 'AI 분석 중... (몇 초 걸려요)' : 'AI 최적화 실행'}
       </button>
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+      {error && (
+        <p className="mt-2 text-sm font-medium text-score-bad">{error}</p>
+      )}
     </div>
   )
 }

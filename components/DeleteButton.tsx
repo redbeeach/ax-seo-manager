@@ -27,7 +27,7 @@ export default function DeleteButton({ id }: { id: string }) {
     <button
       onClick={handleDelete}
       disabled={loading}
-      className="border border-red-500 text-red-500 px-4 py-2 rounded-md disabled:opacity-50"
+      className="flex h-10 items-center rounded border border-score-bad px-4 text-sm font-medium text-score-bad hover:bg-red-50 disabled:opacity-50"
     >
       {loading ? '삭제 중...' : '삭제'}
     </button>
