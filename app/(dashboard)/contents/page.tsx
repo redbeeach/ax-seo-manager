@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
+export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 
 function scoreColorClass(score: number) {

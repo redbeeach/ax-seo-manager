@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
+export const dynamic = 'force-dynamic'
 
 function scoreColorClass(score: number) {
   if (score >= 80) return 'text-score-good'
