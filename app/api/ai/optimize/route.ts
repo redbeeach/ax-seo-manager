@@ -171,6 +171,27 @@ export async function POST(request: NextRequest) {
         .eq('id', id)
 
       if (error) throw error
+
+      // 최적화 결과를 버전 기록으로 별도 저장 (덮어쓰기 전 내용도 나중에 복원 가능하게)
+      // 버전 저장이 실패해도 메인 최적화 자체는 성공으로 처리 (부가 기능이라 핵심 흐름을 막지 않음)
+      try {
+        await supabaseAdmin.from('content_versions').insert({
+          content_id: id,
+          seo_title: aiResult.seo_title,
+          meta_description: aiResult.meta_description,
+          og_title: aiResult.og_title,
+          og_description: aiResult.og_description,
+          faq_json: aiResult.faq,
+          ae_answer: aiResult.ae_answer,
+          geo_summary: aiResult.geo_summary,
+          json_ld,
+          seo_score: scores.seo_score,
+          aeo_score: scores.aeo_score,
+          geo_score: scores.geo_score,
+        })
+      } catch (versionErr) {
+        console.error('[content-version-save-error]', versionErr)
+      }
     }
 
     return NextResponse.json({ ...aiResult, json_ld, ...scores })

@@ -6,6 +6,7 @@ import DeleteButton from '@/components/DeleteButton'
 import AiOptimizeButton from '@/components/AiOptimizeButton'
 import { calculateScores } from '@/lib/score/calculate'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
+import VersionHistory from '@/components/VersionHistory'
 
 export async function generateMetadata({
   params,
@@ -110,7 +111,7 @@ export default async function ContentDetailPage({
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
                   title="고정 페이지 새 탭에서 열기"
                 >
-                  /sub/{content.page_slug} 보기 ↗
+                  {content.page_slug} 보기 ↗
                 </a>
               )}
             </div>
@@ -150,7 +151,7 @@ export default async function ContentDetailPage({
           <AiOptimizeButton id={id} title={content.title} body={content.body} />
         </div>
 
-        {/* 점수 브레이크다운 3단 */}
+        {/* 점수 브레이크다운 3단 + 키워드 분석 */}
         {content.seo_title && (
           <div className="mb-8 grid grid-cols-4 gap-8 border-t border-line pt-6">
             {breakdownColumns.map((col) => (
@@ -273,6 +274,11 @@ export default async function ContentDetailPage({
               <pre className="overflow-x-auto rounded bg-surface-muted p-4 text-xs text-ink-secondary">
                 {JSON.stringify(content.json_ld, null, 2)}
               </pre>
+            </div>
+
+            {/* 그리드 밖으로 분리 - 2단 그리드 칸에 끼지 않게 */}
+            <div className="mt-8">
+              <VersionHistory contentId={id} />
             </div>
           </div>
         )}

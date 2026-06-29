@@ -65,7 +65,7 @@ export default async function ContentsListPage() {
                   className="rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent"
                   title="고정 페이지 새 탭에서 열기"
                 >
-                  /sub/{c.page_slug} ↗
+                  {c.page_slug} ↗
                 </a>
               )}
             </div>
