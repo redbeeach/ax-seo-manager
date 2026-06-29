@@ -7,6 +7,7 @@ import AiOptimizeButton from '@/components/AiOptimizeButton'
 import { calculateScores } from '@/lib/score/calculate'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
+import ScoreSummaryCards from '@/components/ScoreSummaryCards'
 
 export async function generateMetadata({
   params,
@@ -65,12 +66,14 @@ export default async function ContentDetailPage({
     ae_answer: content.ae_answer,
     geo_summary: content.geo_summary,
     json_ld: content.json_ld,
+    body: content.body,
   })
 
   const breakdownColumns = [
     { label: 'SEO', score: scores.seo_score, items: scores.seo_breakdown },
     { label: 'AEO', score: scores.aeo_score, items: scores.aeo_breakdown },
     { label: 'GEO', score: scores.geo_score, items: scores.geo_breakdown },
+    { label: 'Content', score: scores.content_score, items: scores.content_breakdown },
   ]
 
   const keywords = analyzeKeywords(content.title, content.body)
@@ -93,8 +96,8 @@ export default async function ContentDetailPage({
                 {content.title}
               </h1>
               {content.gb5_bo_table && content.gb5_wr_id && (
-                <a
-                  href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
+                
+                  <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
@@ -104,8 +107,8 @@ export default async function ContentDetailPage({
                 </a>
               )}
               {content.page_slug && (
-                <a
-                  href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`}
+                
+                  <a href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
@@ -133,27 +136,23 @@ export default async function ContentDetailPage({
           </div>
         </div>
 
-        <p className="mb-6 flex gap-3 text-[13px] text-ink-hint">
-          <span>
-            SEO <span className={`font-medium ${scoreColorClass(content.seo_score)}`}>{content.seo_score}</span>
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            AEO <span className={`font-medium ${scoreColorClass(content.aeo_score)}`}>{content.aeo_score}</span>
-          </span>
-          <span aria-hidden>·</span>
-          <span>
-            GEO <span className={`font-medium ${scoreColorClass(content.geo_score)}`}>{content.geo_score}</span>
-          </span>
-        </p>
+        {/* 점수 카드 (바 그래프 + 개선 추천) */}
+        <ScoreSummaryCards
+          scores={[
+            { label: 'SEO', score: scores.seo_score, maxScore: 100, items: scores.seo_breakdown },
+            { label: 'AEO', score: scores.aeo_score, maxScore: 100, items: scores.aeo_breakdown },
+            { label: 'GEO', score: scores.geo_score, maxScore: 100, items: scores.geo_breakdown },
+            { label: 'Content', score: scores.content_score, maxScore: 100, items: scores.content_breakdown },
+          ]}
+        />
 
         <div className="mb-7">
           <AiOptimizeButton id={id} title={content.title} body={content.body} />
         </div>
 
-        {/* 점수 브레이크다운 3단 + 키워드 분석 */}
+        {/* 점수 브레이크다운 4단 + 키워드 분석 */}
         {content.seo_title && (
-          <div className="mb-8 grid grid-cols-4 gap-8 border-t border-line pt-6">
+          <div className="mb-8 grid grid-cols-5 gap-6 border-t border-line pt-6">
             {breakdownColumns.map((col) => (
               <div key={col.label}>
                 <p className="mb-3 text-[15px] font-bold text-ink">

@@ -1,3 +1,5 @@
+import { analyzeContent, ContentAnalysisResult } from './content-analysis'
+
 interface FaqItem {
   question: string
   answer: string
@@ -12,6 +14,7 @@ interface ScoreInput {
   ae_answer: string | null
   geo_summary: string | null
   json_ld: Record<string, unknown> | null
+  body?: string | null
 }
 
 interface ScoreBreakdownItem {
@@ -24,9 +27,12 @@ export interface ScoreResult {
   seo_score: number
   aeo_score: number
   geo_score: number
+  content_score: number
   seo_breakdown: ScoreBreakdownItem[]
   aeo_breakdown: ScoreBreakdownItem[]
   geo_breakdown: ScoreBreakdownItem[]
+  content_breakdown: ScoreBreakdownItem[]
+  content_stats: ContentAnalysisResult['stats']
 }
 
 export function calculateScores(content: ScoreInput): ScoreResult {
@@ -79,12 +85,18 @@ export function calculateScores(content: ScoreInput): ScoreResult {
 
   const geoScore = geoBreakdown.reduce((sum, item) => sum + item.points, 0)
 
+  // ===== Content 점수 (H태그/ALT/내부링크/글자수/표·목차) =====
+  const contentAnalysis = analyzeContent(content.body ?? null)
+
   return {
     seo_score: seoScore,
     aeo_score: aeoScore,
     geo_score: geoScore,
+    content_score: contentAnalysis.content_score,
     seo_breakdown: seoBreakdown,
     aeo_breakdown: aeoBreakdown,
     geo_breakdown: geoBreakdown,
+    content_breakdown: contentAnalysis.content_breakdown,
+    content_stats: contentAnalysis.stats,
   }
 }

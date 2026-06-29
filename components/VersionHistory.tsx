@@ -13,6 +13,14 @@ interface Version {
   created_at: string
 }
 
+// created_at이 타임존 표시 없이 내려오는 경우(예: '2026-06-29T16:04:39')
+// UTC로 저장된 값을 로컬시간으로 잘못 해석하는 문제를 막기 위해
+// 'Z'가 없으면 붙여서 명시적으로 UTC로 해석시킨 뒤 한국시간으로 변환
+function formatKstDateTime(value: string) {
+  const isoValue = /Z$|[+-]\d{2}:?\d{2}$/.test(value) ? value : value + 'Z'
+  return new Date(isoValue).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
+}
+
 function scoreColorClass(score: number) {
   if (score >= 80) return 'text-score-good'
   if (score >= 50) return 'text-score-mid'
@@ -97,7 +105,7 @@ export default function VersionHistory({ contentId }: { contentId: string }) {
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-medium text-ink">
-                      {new Date(v.created_at).toLocaleString('ko-KR')}
+                      {formatKstDateTime(v.created_at)}
                     </span>
                     {v.label && (
                       <span className="rounded bg-surface-muted px-2 py-0.5 text-[11px] text-ink-secondary">
