@@ -58,6 +58,17 @@ export default async function ContentsListPage() {
                   GB5 ↗
                 </a>
               )}
+              {c.page_slug && (
+                <a
+                  href={`https://hby1126hh.mycafe24.com/g5/sub/${c.page_slug}.php`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent"
+                  title="고정 페이지 새 탭에서 열기"
+                >
+                  /sub/{c.page_slug} ↗
+                </a>
+              )}
             </div>
             <p className="mt-2 flex gap-3 text-[13px] text-ink-hint">
               <span>
