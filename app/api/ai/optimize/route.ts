@@ -49,7 +49,7 @@ async function callOpenAI(title: string, body: string): Promise<AiResult> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-3.5-turbo',
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
