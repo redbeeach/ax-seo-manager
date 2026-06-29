@@ -6,6 +6,7 @@ const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'AX SEO Manager'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'
 const AUTHOR_NAME = process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자'
 const AUTHOR_JOB_TITLE = process.env.NEXT_PUBLIC_AUTHOR_JOB_TITLE || ''
+const GB5_URL = process.env.NEXT_PUBLIC_GB5_URL || ''
 
 interface AiResult {
   seo_title: string
@@ -91,18 +92,23 @@ export async function POST(request: NextRequest) {
     }
 
     let publishedAt = new Date().toISOString()
+    let pageUrl = id ? `${SITE_URL}/contents/${id}` : SITE_URL
     if (id) {
       const { data: existing } = await supabaseAdmin
         .from('contents')
-        .select('created_at')
+        .select('created_at, gb5_bo_table, gb5_wr_id')
         .eq('id', id)
         .single()
       if (existing?.created_at) {
         publishedAt = existing.created_at
       }
+      // 그누보드에서 동기화된 글이면, JSON-LD url은 AX 내부 주소가 아니라
+      // 실제 검색엔진/유저가 보는 그누보드 게시글 주소를 가리켜야 한다.
+      if (existing?.gb5_bo_table && existing?.gb5_wr_id && GB5_URL) {
+        pageUrl = `${GB5_URL}/bbs/board.php?bo_table=${existing.gb5_bo_table}&wr_id=${existing.gb5_wr_id}`
+      }
     }
     const modifiedAt = new Date().toISOString()
-    const pageUrl = id ? `${SITE_URL}/contents/${id}` : SITE_URL
 
     const aiResult = await callOpenAI(title, body)
 

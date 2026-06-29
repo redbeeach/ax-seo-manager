@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
-export const dynamic = 'force-dynamic'
 import Link from 'next/link'
+export const dynamic = 'force-dynamic'
 
 function scoreColorClass(score: number) {
   if (score >= 80) return 'text-score-good'
@@ -15,7 +15,7 @@ export default async function ContentsListPage() {
     .order('created_at', { ascending: false })
 
   return (
-    <div className="my-0 mx-auto max-w-4xl bg-surface px-8 py-10 w-[1400px]">
+    <div className="mx-auto max-w-3xl bg-surface px-8 py-10">
       <div className="mb-5 flex items-end justify-between">
         <div>
           <p className="mb-2.5 text-sm font-medium text-accent">AX SEO Manager</p>
@@ -40,12 +40,25 @@ export default async function ContentsListPage() {
       <ul>
         {contents?.map((c) => (
           <li key={c.id} className="border-b border-line py-5">
-            <Link
-              href={`/contents/${c.id}`}
-              className="text-[17px] font-bold text-ink hover:text-accent"
-            >
-              {c.title}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/contents/${c.id}`}
+                className="text-[17px] font-bold text-ink hover:text-accent"
+              >
+                {c.title}
+              </Link>
+              {c.gb5_bo_table && c.gb5_wr_id && (
+                <a
+                  href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${c.gb5_bo_table}&wr_id=${c.gb5_wr_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent"
+                  title="그누보드 원본 글 새 탭에서 열기"
+                >
+                  GB5 ↗
+                </a>
+              )}
+            </div>
             <p className="mt-2 flex gap-3 text-[13px] text-ink-hint">
               <span>
                 SEO{' '}

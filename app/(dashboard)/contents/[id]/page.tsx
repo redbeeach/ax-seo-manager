@@ -87,9 +87,22 @@ export default async function ContentDetailPage({
         <div className="mb-2 flex items-start justify-between">
           <div>
             <p className="mb-2.5 text-sm font-medium text-accent">콘텐츠 / 상세</p>
-            <h1 className="text-[32px] font-bold tracking-tight text-ink">
-              {content.title}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-[32px] font-bold tracking-tight text-ink">
+                {content.title}
+              </h1>
+              {content.gb5_bo_table && content.gb5_wr_id && (
+                <a
+                  href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
+                  title="그누보드 원본 글 새 탭에서 열기"
+                >
+                  GB5 원본 보기 ↗
+                </a>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             <Link
