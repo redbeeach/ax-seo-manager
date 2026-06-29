@@ -7,6 +7,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'
 const AUTHOR_NAME = process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자'
 const AUTHOR_JOB_TITLE = process.env.NEXT_PUBLIC_AUTHOR_JOB_TITLE || ''
 const GB5_URL = process.env.NEXT_PUBLIC_GB5_URL || ''
+const OG_IMAGE_URL = process.env.NEXT_PUBLIC_OG_IMAGE_URL || (GB5_URL ? `${GB5_URL}/page/images/sum.png` : '')
 
 interface AiResult {
   seo_title: string
@@ -100,7 +101,8 @@ export async function POST(request: NextRequest) {
         .eq('id', id)
         .single()
       if (existing?.created_at) {
-        publishedAt = existing.created_at
+        // created_at이 타임존 없이 저장된 경우가 있어 ISO 8601(Z 포함)로 정규화
+        publishedAt = new Date(existing.created_at).toISOString()
       }
       // 그누보드에서 동기화된 글이면, JSON-LD url은 AX 내부 주소가 아니라
       // 실제 검색엔진/유저가 보는 그누보드 게시글 주소를 가리켜야 한다.
@@ -123,6 +125,7 @@ export async function POST(request: NextRequest) {
         '@type': 'Person',
         name: AUTHOR_NAME,
         ...(AUTHOR_JOB_TITLE ? { jobTitle: AUTHOR_JOB_TITLE } : {}),
+        ...(GB5_URL ? { url: GB5_URL } : {}),
       },
       publisher: {
         '@type': 'Organization',
@@ -130,6 +133,7 @@ export async function POST(request: NextRequest) {
       },
       url: pageUrl,
       mainEntityOfPage: pageUrl,
+      ...(OG_IMAGE_URL ? { image: OG_IMAGE_URL } : {}),
     }
 
     const scores = calculateScores({
