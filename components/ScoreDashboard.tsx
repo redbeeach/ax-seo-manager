@@ -23,6 +23,8 @@ interface CrawlApiResult {
   url: string
   crawled_at: string
   page_title: string | null
+  title: string | null
+  body: string
   content_score: number
   content_breakdown: ScoreBreakdownItem[]
 }
@@ -33,8 +35,10 @@ interface ScoreDashboardProps {
   aeo: ScoreGroup
   geo: ScoreGroup
   dbContent: ScoreGroup
+  citation: ScoreGroup
   showBreakdown: boolean
   keywords: KeywordData
+  onCrawlResult?: (result: { title: string | null; body: string; url: string } | null) => void
 }
 
 function tierFill(ratio: number) {
@@ -55,8 +59,10 @@ export default function ScoreDashboard({
   aeo,
   geo,
   dbContent,
+  citation,
   showBreakdown,
   keywords,
+  onCrawlResult,
 }: ScoreDashboardProps) {
   const [crawlLoading, setCrawlLoading] = useState(false)
   const [crawlError, setCrawlError] = useState<string | null>(null)
@@ -79,6 +85,7 @@ export default function ScoreDashboard({
       }
 
       setCrawlResult(data)
+      onCrawlResult?.({ title: data.title, body: data.body, url: data.url })
     } catch (err) {
       setCrawlError(err instanceof Error ? err.message : '알 수 없는 오류')
     } finally {
@@ -91,6 +98,7 @@ export default function ScoreDashboard({
     { label: 'AEO', score: aeo.score, items: aeo.breakdown },
     { label: 'GEO', score: geo.score, items: geo.breakdown },
     { label: 'Content', score: content.score, items: content.breakdown },
+    { label: 'AI Citation', score: citation.score, items: citation.breakdown },
   ]
 
   const recommendations = scoreCards.flatMap((group) =>
@@ -105,8 +113,8 @@ export default function ScoreDashboard({
 
   return (
     <div className="mb-8 border-t border-line pt-6">
-      {/* 점수 카드 4단 */}
-      <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* 점수 카드 5단 */}
+      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
         {scoreCards.map((group) => {
           const ratio = group.score / 100
           const widthPct = Math.min(100, Math.round(ratio * 100))
@@ -202,9 +210,9 @@ export default function ScoreDashboard({
         )}
       </div>
 
-      {/* 4단 브레이크다운 + 키워드 분석 */}
+      {/* 5단 브레이크다운 + 키워드 분석 */}
       {showBreakdown && (
-        <div className="grid grid-cols-5 gap-6 border-t border-line pt-6">
+        <div className="grid grid-cols-2 gap-6 border-t border-line pt-6 md:grid-cols-3 lg:grid-cols-6">
           {scoreCards.map((col) => (
             <div key={col.label}>
               <p className="mb-3 text-[15px] font-bold text-ink">

@@ -8,7 +8,9 @@ import { calculateScores } from '@/lib/score/calculate'
 import { buildLiveUrl } from '@/lib/gb5/url'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
-import ScoreDashboard from '@/components/ScoreDashboard'
+
+import EntitySemanticCard from '@/components/EntitySemanticCard'
+import ContentInsights from '@/components/ContentInsights'
 
 export async function generateMetadata({
   params,
@@ -138,16 +140,18 @@ export default async function ContentDetailPage({
           </div>
         </div>
 
-        {/* 점수 카드 + 개선추천 + 브레이크다운 + 키워드 분석 (크롤링과 동기화) */}
-        <ScoreDashboard
+        {/* 점수 카드 + 개선추천 + 브레이크다운 + 키워드 분석 + Entity/Semantic (크롤링 결과 공유) */}
+        <ContentInsights
           contentId={id}
           seo={{ score: scores.seo_score, breakdown: scores.seo_breakdown }}
           aeo={{ score: scores.aeo_score, breakdown: scores.aeo_breakdown }}
           geo={{ score: scores.geo_score, breakdown: scores.geo_breakdown }}
           dbContent={{ score: scores.content_score, breakdown: scores.content_breakdown }}
+          citation={{ score: scores.citation_score, breakdown: scores.citation_breakdown }}
           showBreakdown={!!content.seo_title}
           keywords={keywords}
         />
+        <EntitySemanticCard contentId={id} />
 
         <div className="mb-7">
           <AiOptimizeButton id={id} title={content.title} body={content.body} />

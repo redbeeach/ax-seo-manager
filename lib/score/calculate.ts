@@ -1,4 +1,5 @@
 import { analyzeContent, ContentAnalysisResult } from './content-analysis'
+import { analyzeCitation, CitationAnalysisResult } from './citation-analysis'
 import { isValidHttpUrl } from '@/lib/gb5/url'
 
 interface FaqItem {
@@ -36,11 +37,14 @@ export interface ScoreResult {
   aeo_score: number
   geo_score: number
   content_score: number
+  citation_score: number
   seo_breakdown: ScoreBreakdownItem[]
   aeo_breakdown: ScoreBreakdownItem[]
   geo_breakdown: ScoreBreakdownItem[]
   content_breakdown: ScoreBreakdownItem[]
+  citation_breakdown: ScoreBreakdownItem[]
   content_stats: ContentAnalysisResult['stats']
+  citation_stats: CitationAnalysisResult['stats']
 }
 
 export function calculateScores(content: ScoreInput): ScoreResult {
@@ -62,14 +66,14 @@ export function calculateScores(content: ScoreInput): ScoreResult {
   const hasOg = !!content.og_title && !!content.og_description
   seoBreakdown.push({ label: 'OG 태그 존재', points: hasOg ? 15 : 0, passed: hasOg })
 
-// Canonical: canonical_url을 직접 지정(형식이 http/https URL일 때만 인정)했거나,
+  // Canonical: canonical_url을 직접 지정(형식이 http/https URL일 때만 인정)했거나,
   // page_slug가 있거나, 게시판 글(gb5_bo_table+wr_id)이면 통과
   const hasCanonical =
     (!!content.canonical_url && isValidHttpUrl(content.canonical_url)) ||
     !!content.page_slug ||
     (!!content.gb5_bo_table && !!content.gb5_wr_id)
   seoBreakdown.push({ label: 'Canonical URL 설정', points: hasCanonical ? 15 : 0, passed: hasCanonical })
-  
+
   // robots: 명시적으로 false가 아니면(미설정 포함) 통과 — 기본값은 색인 허용
   const robotsOk = content.robots_index !== false && content.robots_follow !== false
   seoBreakdown.push({
@@ -112,15 +116,26 @@ export function calculateScores(content: ScoreInput): ScoreResult {
   // ===== Content 점수 (H태그/ALT/내부링크/글자수/표·목차) =====
   const contentAnalysis = analyzeContent(content.body ?? null, content.title)
 
+  // ===== AI Citation 점수 (FAQ/요약/표/리스트/출처/정의 존재 여부) =====
+  const citationAnalysis = analyzeCitation({
+    body: content.body ?? null,
+    title: content.title,
+    faqCount,
+    geoSummary: content.geo_summary,
+  })
+
   return {
     seo_score: seoScore,
     aeo_score: aeoScore,
     geo_score: geoScore,
     content_score: contentAnalysis.content_score,
+    citation_score: citationAnalysis.citation_score,
     seo_breakdown: seoBreakdown,
     aeo_breakdown: aeoBreakdown,
     geo_breakdown: geoBreakdown,
     content_breakdown: contentAnalysis.content_breakdown,
+    citation_breakdown: citationAnalysis.citation_breakdown,
     content_stats: contentAnalysis.stats,
+    citation_stats: citationAnalysis.stats,
   }
 }

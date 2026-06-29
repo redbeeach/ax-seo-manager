@@ -75,6 +75,8 @@ export async function POST(
     url: liveUrl,
     crawled_at: new Date().toISOString(),
     page_title: liveTitle,
+    title: liveTitle,
+    body: bodyInner,
     content_score: analysis.content_score,
     content_breakdown: analysis.content_breakdown,
     stats: analysis.stats,
