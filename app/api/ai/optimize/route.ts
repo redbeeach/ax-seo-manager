@@ -7,6 +7,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'
 const AUTHOR_NAME = process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자'
 const AUTHOR_JOB_TITLE = process.env.NEXT_PUBLIC_AUTHOR_JOB_TITLE || ''
 const GB5_URL = process.env.NEXT_PUBLIC_GB5_URL || ''
+const GB5_SUBPAGE_PATH = process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'
 const OG_IMAGE_URL = process.env.NEXT_PUBLIC_OG_IMAGE_URL || (GB5_URL ? `${GB5_URL}/page/images/sum.png` : '')
 
 interface AiResult {
@@ -97,17 +98,20 @@ export async function POST(request: NextRequest) {
     if (id) {
       const { data: existing } = await supabaseAdmin
         .from('contents')
-        .select('created_at, gb5_bo_table, gb5_wr_id')
+        .select('created_at, gb5_bo_table, gb5_wr_id, page_slug')
         .eq('id', id)
         .single()
       if (existing?.created_at) {
         // created_at이 타임존 없이 저장된 경우가 있어 ISO 8601(Z 포함)로 정규화
         publishedAt = new Date(existing.created_at).toISOString()
       }
-      // 그누보드에서 동기화된 글이면, JSON-LD url은 AX 내부 주소가 아니라
-      // 실제 검색엔진/유저가 보는 그누보드 게시글 주소를 가리켜야 한다.
+      // 그누보드 게시글 동기화 콘텐츠 -> 실제 게시글 주소
       if (existing?.gb5_bo_table && existing?.gb5_wr_id && GB5_URL) {
         pageUrl = `${GB5_URL}/bbs/board.php?bo_table=${existing.gb5_bo_table}&wr_id=${existing.gb5_wr_id}`
+      }
+      // 고정 페이지(슬러그 기반) 콘텐츠 -> 실제 sub 페이지 주소
+      else if (existing?.page_slug && GB5_URL) {
+        pageUrl = `${GB5_URL}${GB5_SUBPAGE_PATH}/${existing.page_slug}.php`
       }
     }
     const modifiedAt = new Date().toISOString()

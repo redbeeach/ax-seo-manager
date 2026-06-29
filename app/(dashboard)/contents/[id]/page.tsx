@@ -104,7 +104,7 @@ export default async function ContentDetailPage({
               )}
               {content.page_slug && (
                 <a
-                  href={`https://hby1126hh.mycafe24.com/g5/sub/${content.page_slug}.php`}
+                  href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"

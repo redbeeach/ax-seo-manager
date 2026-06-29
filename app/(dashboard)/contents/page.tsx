@@ -1,7 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
 export const dynamic = 'force-dynamic'
-
 function scoreColorClass(score: number) {
   if (score >= 80) return 'text-score-good'
   if (score >= 50) return 'text-score-mid'
@@ -60,7 +59,7 @@ export default async function ContentsListPage() {
               )}
               {c.page_slug && (
                 <a
-                  href={`https://hby1126hh.mycafe24.com/g5/sub/${c.page_slug}.php`}
+                  href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${c.page_slug}.php`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent"
