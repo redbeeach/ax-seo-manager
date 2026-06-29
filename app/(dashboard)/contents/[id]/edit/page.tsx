@@ -49,7 +49,11 @@ export default function EditContentPage() {
       setError('제목과 본문을 입력해주세요.')
       return
     }
-
+    const trimmedCanonical = canonicalUrl.trim()
+    if (trimmedCanonical && !/^https?:\/\/.+/i.test(trimmedCanonical)) {
+      setError('Canonical URL은 http:// 또는 https:// 로 시작하는 전체 URL이어야 합니다. (예: https://example.com/page)')
+      return
+    }
     setLoading(true)
 
     try {

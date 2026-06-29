@@ -1,4 +1,5 @@
 import { analyzeContent, ContentAnalysisResult } from './content-analysis'
+import { isValidHttpUrl } from '@/lib/gb5/url'
 
 interface FaqItem {
   question: string
@@ -6,6 +7,7 @@ interface FaqItem {
 }
 
 interface ScoreInput {
+  title?: string | null
   seo_title: string | null
   meta_description: string | null
   og_title: string | null
@@ -19,6 +21,8 @@ interface ScoreInput {
   robots_index?: boolean | null
   robots_follow?: boolean | null
   page_slug?: string | null
+  gb5_bo_table?: string | null
+  gb5_wr_id?: string | number | null
 }
 
 interface ScoreBreakdownItem {
@@ -58,10 +62,14 @@ export function calculateScores(content: ScoreInput): ScoreResult {
   const hasOg = !!content.og_title && !!content.og_description
   seoBreakdown.push({ label: 'OG 태그 존재', points: hasOg ? 15 : 0, passed: hasOg })
 
-  // Canonical: canonical_url을 직접 지정했거나, page_slug가 있어서 자동 생성 가능하면 통과
-  const hasCanonical = !!content.canonical_url || !!content.page_slug
+// Canonical: canonical_url을 직접 지정(형식이 http/https URL일 때만 인정)했거나,
+  // page_slug가 있거나, 게시판 글(gb5_bo_table+wr_id)이면 통과
+  const hasCanonical =
+    (!!content.canonical_url && isValidHttpUrl(content.canonical_url)) ||
+    !!content.page_slug ||
+    (!!content.gb5_bo_table && !!content.gb5_wr_id)
   seoBreakdown.push({ label: 'Canonical URL 설정', points: hasCanonical ? 15 : 0, passed: hasCanonical })
-
+  
   // robots: 명시적으로 false가 아니면(미설정 포함) 통과 — 기본값은 색인 허용
   const robotsOk = content.robots_index !== false && content.robots_follow !== false
   seoBreakdown.push({
@@ -102,7 +110,7 @@ export function calculateScores(content: ScoreInput): ScoreResult {
   const geoScore = geoBreakdown.reduce((sum, item) => sum + item.points, 0)
 
   // ===== Content 점수 (H태그/ALT/내부링크/글자수/표·목차) =====
-  const contentAnalysis = analyzeContent(content.body ?? null)
+  const contentAnalysis = analyzeContent(content.body ?? null, content.title)
 
   return {
     seo_score: seoScore,

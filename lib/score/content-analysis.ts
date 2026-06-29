@@ -81,19 +81,33 @@ function hasTocMarker(html: string): boolean {
   return false
 }
 
-export function analyzeContent(bodyHtml: string | null): ContentAnalysisResult {
+export function analyzeContent(bodyHtml: string | null, pageTitle?: string | null): ContentAnalysisResult {
   const html = bodyHtml ?? ''
   const breakdown: ScoreBreakdownItem[] = []
 
-  const h1Count = countTag(html, 'h1')
+  const bodyH1Count = countTag(html, 'h1')
   const h2Count = countTag(html, 'h2')
   const h3Count = countTag(html, 'h3')
+
+  // 페이지 템플릿이 title을 <h1>으로 자동 렌더링하는 경우가 많음 (예: <h1>{title}</h1>)
+  // 그래서 title이 있으면 페이지 H1은 이미 충족된 것으로 간주하고,
+  // 본문 안에 h1이 또 있으면 오히려 "H1 중복"으로 보고 감점한다.
+  const pageHasTitleH1 = !!pageTitle
+  const h1Count = bodyH1Count + (pageHasTitleH1 ? 1 : 0)
 
   const h1Exists = h1Count >= 1
   breakdown.push({ label: 'H1 존재', points: h1Exists ? 15 : 0, passed: h1Exists })
 
   const h1Single = h1Count === 1
-  breakdown.push({ label: 'H1 1개만 사용', points: h1Single ? 10 : 0, passed: h1Single })
+  breakdown.push({
+    label: h1Single
+      ? 'H1 1개만 사용'
+      : pageHasTitleH1 && bodyH1Count > 0
+      ? `H1 중복 — 제목이 이미 H1인데 본문에 H1 ${bodyH1Count}개 추가됨`
+      : 'H1 1개만 사용',
+    points: h1Single ? 10 : 0,
+    passed: h1Single,
+  })
 
   const h2Enough = h2Count >= 2
   breakdown.push({ label: 'H2 2개 이상', points: h2Enough ? 15 : 0, passed: h2Enough })

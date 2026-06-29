@@ -5,9 +5,10 @@ import Link from 'next/link'
 import DeleteButton from '@/components/DeleteButton'
 import AiOptimizeButton from '@/components/AiOptimizeButton'
 import { calculateScores } from '@/lib/score/calculate'
+import { buildLiveUrl } from '@/lib/gb5/url'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
-import ScoreSummaryCards from '@/components/ScoreSummaryCards'
+import ScoreDashboard from '@/components/ScoreDashboard'
 
 export async function generateMetadata({
   params,
@@ -24,11 +25,7 @@ export async function generateMetadata({
 
   if (!content) return {}
 
-  const canonicalUrl =
-    content.canonical_url ||
-    (content.page_slug
-      ? `https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`
-      : undefined)
+  const canonicalUrl = buildLiveUrl(content) ?? undefined
 
   return {
     title: content.seo_title || content.title,
@@ -43,12 +40,6 @@ export async function generateMetadata({
       description: content.og_description || undefined,
     },
   }
-}
-
-function scoreColorClass(score: number) {
-  if (score >= 80) return 'text-score-good'
-  if (score >= 50) return 'text-score-mid'
-  return 'text-score-bad'
 }
 
 export default async function ContentDetailPage({
@@ -68,8 +59,8 @@ export default async function ContentDetailPage({
     notFound()
   }
 
-
   const scores = calculateScores({
+    title: content.title,
     seo_title: content.seo_title,
     meta_description: content.meta_description,
     og_title: content.og_title,
@@ -83,13 +74,9 @@ export default async function ContentDetailPage({
     robots_index: content.robots_index,
     robots_follow: content.robots_follow,
     page_slug: content.page_slug,
+    gb5_bo_table: content.gb5_bo_table,
+    gb5_wr_id: content.gb5_wr_id,
   })
-  const breakdownColumns = [
-    { label: 'SEO', score: scores.seo_score, items: scores.seo_breakdown },
-    { label: 'AEO', score: scores.aeo_score, items: scores.aeo_breakdown },
-    { label: 'GEO', score: scores.geo_score, items: scores.geo_breakdown },
-    { label: 'Content', score: scores.content_score, items: scores.content_breakdown },
-  ]
 
   const keywords = analyzeKeywords(content.title, content.body)
 
@@ -112,7 +99,7 @@ export default async function ContentDetailPage({
               </h1>
               {content.gb5_bo_table && content.gb5_wr_id && (
                 
-                  <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
+                <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
@@ -151,96 +138,20 @@ export default async function ContentDetailPage({
           </div>
         </div>
 
-        {/* 점수 카드 (바 그래프 + 개선 추천) */}
-        <ScoreSummaryCards
-          scores={[
-            { label: 'SEO', score: scores.seo_score, maxScore: 100, items: scores.seo_breakdown },
-            { label: 'AEO', score: scores.aeo_score, maxScore: 100, items: scores.aeo_breakdown },
-            { label: 'GEO', score: scores.geo_score, maxScore: 100, items: scores.geo_breakdown },
-            { label: 'Content', score: scores.content_score, maxScore: 100, items: scores.content_breakdown },
-          ]}
+        {/* 점수 카드 + 개선추천 + 브레이크다운 + 키워드 분석 (크롤링과 동기화) */}
+        <ScoreDashboard
+          contentId={id}
+          seo={{ score: scores.seo_score, breakdown: scores.seo_breakdown }}
+          aeo={{ score: scores.aeo_score, breakdown: scores.aeo_breakdown }}
+          geo={{ score: scores.geo_score, breakdown: scores.geo_breakdown }}
+          dbContent={{ score: scores.content_score, breakdown: scores.content_breakdown }}
+          showBreakdown={!!content.seo_title}
+          keywords={keywords}
         />
 
         <div className="mb-7">
           <AiOptimizeButton id={id} title={content.title} body={content.body} />
         </div>
-
-        {/* 점수 브레이크다운 4단 + 키워드 분석 */}
-        {content.seo_title && (
-          <div className="mb-8 grid grid-cols-5 gap-6 border-t border-line pt-6">
-            {breakdownColumns.map((col) => (
-              <div key={col.label}>
-                <p className="mb-3 text-[15px] font-bold text-ink">
-                  {col.label}{' '}
-                  <span className={scoreColorClass(col.score)}>{col.score}점</span>
-                </p>
-                <ul className="space-y-1.5 text-[13px]">
-                  {col.items.map((item, i) => (
-                    <li
-                      key={i}
-                      className={item.passed ? 'text-ink-secondary' : 'text-score-bad'}
-                    >
-                      {item.passed ? '✓' : '✗'} {item.label} ({item.points}pt)
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-
-            {/* 키워드 분석 */}
-            <div>
-              <p className="mb-3 text-[15px] font-bold text-ink">키워드 분석</p>
-
-              <p className="mb-1 text-[12px] font-medium text-ink-hint">주요 키워드</p>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {keywords.primary.length > 0 ? (
-                  keywords.primary.map((w) => (
-                    <span
-                      key={w}
-                      className="rounded bg-surface-muted px-2 py-0.5 text-[12px] text-ink"
-                    >
-                      {w}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[12px] text-ink-hint">제목에서 추출된 키워드 없음</span>
-                )}
-              </div>
-
-              <p className="mb-1 text-[12px] font-medium text-ink-hint">보조 키워드</p>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {keywords.secondary.length > 0 ? (
-                  keywords.secondary.map((k) => (
-                    <span
-                      key={k.word}
-                      className="rounded border border-line px-2 py-0.5 text-[12px] text-ink-secondary"
-                    >
-                      {k.word} ({k.count})
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[12px] text-ink-hint">반복되는 보조 키워드 없음</span>
-                )}
-              </div>
-
-              <p className="mb-1 text-[12px] font-medium text-ink-hint">누락 키워드</p>
-              <div className="flex flex-wrap gap-1.5">
-                {keywords.missing.length > 0 ? (
-                  keywords.missing.map((w) => (
-                    <span
-                      key={w}
-                      className="rounded border border-score-bad px-2 py-0.5 text-[12px] text-score-bad"
-                    >
-                      {w}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[12px] text-score-good">제목 키워드가 본문에 모두 포함됨</span>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="mb-8 whitespace-pre-wrap border-t border-line pt-6 text-[15px] leading-relaxed text-ink">
           {content.body}
