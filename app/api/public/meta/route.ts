@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   const id = url.searchParams.get('id')
   const boTable = url.searchParams.get('bo_table')
   const wrId = url.searchParams.get('wr_id')
+  const slug = url.searchParams.get('slug') // 고정 페이지(회사소개, 오시는길 등) 식별자
 
   let query = supabaseAdmin
     .from('contents')
@@ -18,9 +19,11 @@ export async function GET(request: NextRequest) {
     query = query.eq('id', id)
   } else if (boTable && wrId) {
     query = query.eq('gb5_bo_table', boTable).eq('gb5_wr_id', wrId)
+  } else if (slug) {
+    query = query.eq('page_slug', slug)
   } else {
     return NextResponse.json(
-      { error: 'id 또는 bo_table+wr_id가 필요합니다.' },
+      { error: 'id, slug, 또는 bo_table+wr_id가 필요합니다.' },
       { status: 400 }
     )
   }
@@ -37,8 +40,6 @@ export async function GET(request: NextRequest) {
     .slice(0, 10)
     .join(',')
 
-  // json_ld.author.name이 있으면 그걸 우선 사용 (콘텐츠별 작성자가 다를 수 있으니),
-  // 없으면 환경변수 기본값으로 대체
   const jsonLd = data.json_ld as Record<string, any> | null
   const authorName = jsonLd?.author?.name || AUTHOR_NAME
 
