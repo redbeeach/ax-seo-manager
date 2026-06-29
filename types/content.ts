@@ -15,6 +15,10 @@ export interface Content {
   ae_answer: string | null
   geo_summary: string | null
   json_ld: Record<string, unknown> | null
+  canonical_url: string | null
+  robots_index: boolean
+  robots_follow: boolean
+  page_slug: string | null
   seo_score: number
   aeo_score: number
   geo_score: number

@@ -15,6 +15,10 @@ interface ScoreInput {
   geo_summary: string | null
   json_ld: Record<string, unknown> | null
   body?: string | null
+  canonical_url?: string | null
+  robots_index?: boolean | null
+  robots_follow?: boolean | null
+  page_slug?: string | null
 }
 
 interface ScoreBreakdownItem {
@@ -40,19 +44,31 @@ export function calculateScores(content: ScoreInput): ScoreResult {
   const seoBreakdown: ScoreBreakdownItem[] = []
 
   const hasSeoTitle = !!content.seo_title
-  seoBreakdown.push({ label: 'SEO Title 존재', points: hasSeoTitle ? 20 : 0, passed: hasSeoTitle })
+  seoBreakdown.push({ label: 'SEO Title 존재', points: hasSeoTitle ? 15 : 0, passed: hasSeoTitle })
 
   const seoTitleLenOk = !!content.seo_title && content.seo_title.length <= 60
-  seoBreakdown.push({ label: 'SEO Title 60자 이하', points: seoTitleLenOk ? 20 : 0, passed: seoTitleLenOk })
+  seoBreakdown.push({ label: 'SEO Title 60자 이하', points: seoTitleLenOk ? 15 : 0, passed: seoTitleLenOk })
 
   const hasMeta = !!content.meta_description
-  seoBreakdown.push({ label: 'Meta Description 존재', points: hasMeta ? 20 : 0, passed: hasMeta })
+  seoBreakdown.push({ label: 'Meta Description 존재', points: hasMeta ? 15 : 0, passed: hasMeta })
 
   const metaLenOk = !!content.meta_description && content.meta_description.length <= 155
-  seoBreakdown.push({ label: 'Meta Description 155자 이하', points: metaLenOk ? 20 : 0, passed: metaLenOk })
+  seoBreakdown.push({ label: 'Meta Description 155자 이하', points: metaLenOk ? 15 : 0, passed: metaLenOk })
 
   const hasOg = !!content.og_title && !!content.og_description
-  seoBreakdown.push({ label: 'OG 태그 존재', points: hasOg ? 20 : 0, passed: hasOg })
+  seoBreakdown.push({ label: 'OG 태그 존재', points: hasOg ? 15 : 0, passed: hasOg })
+
+  // Canonical: canonical_url을 직접 지정했거나, page_slug가 있어서 자동 생성 가능하면 통과
+  const hasCanonical = !!content.canonical_url || !!content.page_slug
+  seoBreakdown.push({ label: 'Canonical URL 설정', points: hasCanonical ? 15 : 0, passed: hasCanonical })
+
+  // robots: 명시적으로 false가 아니면(미설정 포함) 통과 — 기본값은 색인 허용
+  const robotsOk = content.robots_index !== false && content.robots_follow !== false
+  seoBreakdown.push({
+    label: robotsOk ? 'robots index/follow 허용' : 'robots noindex 또는 nofollow 설정됨',
+    points: robotsOk ? 10 : 0,
+    passed: robotsOk,
+  })
 
   const seoScore = seoBreakdown.reduce((sum, item) => sum + item.points, 0)
 

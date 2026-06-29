@@ -24,9 +24,20 @@ export async function generateMetadata({
 
   if (!content) return {}
 
+  const canonicalUrl =
+    content.canonical_url ||
+    (content.page_slug
+      ? `https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`
+      : undefined)
+
   return {
     title: content.seo_title || content.title,
     description: content.meta_description || undefined,
+    alternates: canonicalUrl ? { canonical: canonicalUrl } : undefined,
+    robots: {
+      index: content.robots_index !== false,
+      follow: content.robots_follow !== false,
+    },
     openGraph: {
       title: content.og_title || content.title,
       description: content.og_description || undefined,
@@ -57,6 +68,7 @@ export default async function ContentDetailPage({
     notFound()
   }
 
+
   const scores = calculateScores({
     seo_title: content.seo_title,
     meta_description: content.meta_description,
@@ -67,8 +79,11 @@ export default async function ContentDetailPage({
     geo_summary: content.geo_summary,
     json_ld: content.json_ld,
     body: content.body,
+    canonical_url: content.canonical_url,
+    robots_index: content.robots_index,
+    robots_follow: content.robots_follow,
+    page_slug: content.page_slug,
   })
-
   const breakdownColumns = [
     { label: 'SEO', score: scores.seo_score, items: scores.seo_breakdown },
     { label: 'AEO', score: scores.aeo_score, items: scores.aeo_breakdown },

@@ -10,6 +10,9 @@ export default function EditContentPage() {
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [canonicalUrl, setCanonicalUrl] = useState('')
+  const [robotsIndex, setRobotsIndex] = useState(true)
+  const [robotsFollow, setRobotsFollow] = useState(true)
   const [score, setScore] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
@@ -22,6 +25,9 @@ export default function EditContentPage() {
         const data = await res.json()
         setTitle(data.title)
         setBody(data.body)
+        setCanonicalUrl(data.canonical_url ?? '')
+        setRobotsIndex(data.robots_index !== false)
+        setRobotsFollow(data.robots_follow !== false)
         // seo_score / aeo_score / geo_score 중 있는 거 평균 (없으면 null)
         const scores = [data.seo_score, data.aeo_score, data.geo_score].filter(
           (s) => typeof s === 'number'
@@ -50,7 +56,13 @@ export default function EditContentPage() {
       const res = await fetch(`/api/contents/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body }),
+        body: JSON.stringify({
+          title,
+          body,
+          canonical_url: canonicalUrl.trim() || null,
+          robots_index: robotsIndex,
+          robots_follow: robotsFollow,
+        }),
       })
 
       if (!res.ok) {
@@ -135,6 +147,40 @@ export default function EditContentPage() {
             rows={12}
             className="min-h-[200px] resize-y rounded border border-line p-3 text-[15px] leading-relaxed text-ink outline-none focus:border-accent"
           />
+
+          <label htmlFor="canonicalUrl" className="text-sm font-medium text-ink">
+            Canonical URL
+          </label>
+          <input
+            id="canonicalUrl"
+            type="text"
+            value={canonicalUrl}
+            onChange={(e) => setCanonicalUrl(e.target.value)}
+            placeholder="비워두면 page_slug 기반으로 자동 생성됩니다"
+            className="h-10 rounded border border-line px-3 text-[15px] text-ink outline-none focus:border-accent"
+          />
+
+          <span className="text-sm font-medium text-ink">robots</span>
+          <div className="flex gap-5">
+            <label className="flex items-center gap-2 text-sm text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={robotsIndex}
+                onChange={(e) => setRobotsIndex(e.target.checked)}
+                className="h-4 w-4 accent-accent"
+              />
+              검색엔진 색인 허용 (index)
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={robotsFollow}
+                onChange={(e) => setRobotsFollow(e.target.checked)}
+                className="h-4 w-4 accent-accent"
+              />
+              링크 추적 허용 (follow)
+            </label>
+          </div>
         </div>
 
         {error && (
