@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
+import { buildLiveUrl } from '@/lib/gb5/url'
 
 const AUTHOR_NAME = process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자'
 
@@ -13,7 +14,9 @@ export async function GET(request: NextRequest) {
 
   let query = supabaseAdmin
     .from('contents')
-    .select('title, body, seo_title, meta_description, og_title, og_description, json_ld')
+    .select(
+      'title, body, seo_title, meta_description, og_title, og_description, json_ld, canonical_url, robots_index, robots_follow, page_slug, gb5_bo_table, gb5_wr_id'
+    )
 
   if (id) {
     query = query.eq('id', id)
@@ -43,6 +46,11 @@ export async function GET(request: NextRequest) {
   const jsonLd = data.json_ld as Record<string, any> | null
   const authorName = jsonLd?.author?.name || AUTHOR_NAME
 
+  const canonicalUrl = buildLiveUrl(data)
+  const robotsIndex = data.robots_index !== false
+  const robotsFollow = data.robots_follow !== false
+  const robotsContent = `${robotsIndex ? 'index' : 'noindex'},${robotsFollow ? 'follow' : 'nofollow'}`
+
   return NextResponse.json(
     {
       seo_title: data.seo_title,
@@ -52,6 +60,8 @@ export async function GET(request: NextRequest) {
       json_ld: data.json_ld,
       keywords,
       author: authorName,
+      canonical_url: canonicalUrl,
+      robots: robotsContent,
     },
     {
       headers: { 'Access-Control-Allow-Origin': '*' },
