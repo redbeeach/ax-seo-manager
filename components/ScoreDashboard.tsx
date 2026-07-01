@@ -5,6 +5,7 @@ import { useState } from 'react'
 interface ScoreBreakdownItem {
   label: string
   points: number
+  maxPoints: number
   passed: boolean
 }
 
@@ -51,6 +52,11 @@ function tierText(ratio: number) {
   if (ratio >= 0.8) return 'text-score-good'
   if (ratio >= 0.5) return 'text-score-mid'
   return 'text-score-bad'
+}
+
+function projectedScore(group: { score: number; items: ScoreBreakdownItem[] }): number {
+  const recoverable = group.items.filter((i) => !i.passed).reduce((sum, i) => sum + i.maxPoints, 0)
+  return Math.min(100, group.score + recoverable)
 }
 
 export default function ScoreDashboard({
@@ -107,9 +113,14 @@ export default function ScoreDashboard({
       .map((item) => ({
         group: group.label,
         label: item.label,
-        lostPoints: item.points > 0 ? item.points : 0,
+        gainPoints: item.maxPoints,
       }))
   )
+
+  const totalCurrent = scoreCards.reduce((sum, g) => sum + g.score, 0)
+  const totalProjected = scoreCards.reduce((sum, g) => sum + projectedScore(g), 0)
+  const avgCurrent = Math.round(totalCurrent / scoreCards.length)
+  const avgProjected = Math.round(totalProjected / scoreCards.length)
 
   return (
     <div className="mb-8 border-t border-line pt-6">
@@ -119,6 +130,7 @@ export default function ScoreDashboard({
           const ratio = group.score / 100
           const widthPct = Math.min(100, Math.round(ratio * 100))
           const isContentCard = group.label === 'Content'
+          const projected = projectedScore(group)
 
           return (
             <div key={group.label} className="rounded-xl border border-line bg-surface p-4">
@@ -137,11 +149,19 @@ export default function ScoreDashboard({
                   </span>
                 )}
               </div>
-              <p className="mb-3 text-[28px] font-bold leading-none tabular-nums">
+              <p className="mb-1 text-[28px] font-bold leading-none tabular-nums">
                 <span className={tierText(ratio)}>{group.score}</span>
                 <span className="text-[14px] font-normal text-ink-hint"> /100</span>
               </p>
-              <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: '#E5E7EB' }}>
+              {projected > group.score && (
+                <p className="mb-2 text-[11px] text-ink-hint">
+                  전부 수정 시 <span className="font-medium text-accent">{projected}점</span> 예상
+                </p>
+              )}
+              <div
+                className={`w-full overflow-hidden rounded-full ${projected > group.score ? 'mt-1' : 'mt-3'} h-1.5`}
+                style={{ backgroundColor: '#E5E7EB' }}
+              >
                 <div
                   className="h-full rounded-full transition-all"
                   style={{ width: `${widthPct}%`, backgroundColor: tierFill(ratio) }}
@@ -157,8 +177,8 @@ export default function ScoreDashboard({
         <p className="text-[12px] text-ink-hint">
           {crawlResult ? (
             <>
-              
-                <a href={crawlResult.url}
+              <a
+                href={crawlResult.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-accent hover:underline"
@@ -189,7 +209,17 @@ export default function ScoreDashboard({
 
       {/* 개선 추천 */}
       <div className="mb-8 rounded-xl border border-line bg-surface-muted p-4">
-        <p className="mb-3 text-[14px] font-bold text-ink">🔥 개선 추천</p>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[14px] font-bold text-ink">🔥 개선 추천</p>
+          {recommendations.length > 0 && (
+            <p className="text-[12px] text-ink-hint">
+              현재 평균 <span className="font-bold text-ink">{avgCurrent}점</span>
+              {' → '}
+              모두 수정 시 예상{' '}
+              <span className="font-bold text-accent">{avgProjected}점</span>
+            </p>
+          )}
+        </div>
         {recommendations.length === 0 ? (
           <p className="text-[13px] text-score-good">감점 항목 없음 — 완벽해요</p>
         ) : (
@@ -202,7 +232,7 @@ export default function ScoreDashboard({
                     {rec.group}
                   </span>{' '}
                   {rec.label}
-                  {rec.lostPoints > 0 && <span className="text-score-bad"> (-{rec.lostPoints}pt)</span>}
+                  <span className="text-score-good"> (예상 +{rec.gainPoints}pt)</span>
                 </span>
               </li>
             ))}
@@ -222,7 +252,8 @@ export default function ScoreDashboard({
               <ul className="space-y-1.5 text-[13px]">
                 {col.items.map((item, i) => (
                   <li key={i} className={item.passed ? 'text-ink-secondary' : 'text-score-bad'}>
-                    {item.passed ? '✓' : '✗'} {item.label} ({item.points}pt)
+                    {item.passed ? '✓' : '✗'} {item.label} ({item.passed ? '+' : '-'}
+                    {item.maxPoints}pt)
                   </li>
                 ))}
               </ul>

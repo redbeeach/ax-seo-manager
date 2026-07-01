@@ -1,6 +1,7 @@
 interface ScoreBreakdownItem {
   label: string
   points: number
+  maxPoints: number
   passed: boolean
 }
 
@@ -96,7 +97,7 @@ export function analyzeContent(bodyHtml: string | null, pageTitle?: string | nul
   const h1Count = bodyH1Count + (pageHasTitleH1 ? 1 : 0)
 
   const h1Exists = h1Count >= 1
-  breakdown.push({ label: 'H1 존재', points: h1Exists ? 15 : 0, passed: h1Exists })
+  breakdown.push({ label: 'H1 존재', points: h1Exists ? 15 : 0, maxPoints: 15, passed: h1Exists })
 
   const h1Single = h1Count === 1
   breakdown.push({
@@ -106,28 +107,30 @@ export function analyzeContent(bodyHtml: string | null, pageTitle?: string | nul
       ? `H1 중복 — 제목이 이미 H1인데 본문에 H1 ${bodyH1Count}개 추가됨`
       : 'H1 1개만 사용',
     points: h1Single ? 10 : 0,
+    maxPoints: 10,
     passed: h1Single,
   })
 
   const h2Enough = h2Count >= 2
-  breakdown.push({ label: 'H2 2개 이상', points: h2Enough ? 15 : 0, passed: h2Enough })
+  breakdown.push({ label: 'H2 2개 이상', points: h2Enough ? 15 : 0, maxPoints: 15, passed: h2Enough })
 
   const { count: imageCount, missingAlt: imageMissingAltCount } = getImageAltStats(html)
   const altOk = imageCount === 0 || imageMissingAltCount === 0
   breakdown.push({
     label: imageCount === 0 ? '본문 이미지 없음 (해당없음 통과)' : `이미지 ALT 누락 0개 (총 ${imageCount}개)`,
     points: altOk ? 20 : 0,
+    maxPoints: 20,
     passed: altOk,
   })
 
   const { internal: internalLinkCount, external: externalLinkCount } = getLinkStats(html)
   const internalLinkOk = internalLinkCount >= 3
-  breakdown.push({ label: '내부링크 3개 이상', points: internalLinkOk ? 15 : 0, passed: internalLinkOk })
+  breakdown.push({ label: '내부링크 3개 이상', points: internalLinkOk ? 15 : 0, maxPoints: 15, passed: internalLinkOk })
 
   const plainText = stripTags(html)
   const charCount = plainText.length
   const lengthOk = charCount >= 1000
-  breakdown.push({ label: '본문 1000자 이상', points: lengthOk ? 15 : 0, passed: lengthOk })
+  breakdown.push({ label: '본문 1000자 이상', points: lengthOk ? 15 : 0, maxPoints: 15, passed: lengthOk })
 
   const hasTable = /<table\b/i.test(html)
   const hasToc = hasTocMarker(html)
@@ -135,6 +138,7 @@ export function analyzeContent(bodyHtml: string | null, pageTitle?: string | nul
   breakdown.push({
     label: '표 또는 목차 존재',
     points: tableOrTocOk ? 10 : 0,
+    maxPoints: 10,
     passed: tableOrTocOk,
   })
 

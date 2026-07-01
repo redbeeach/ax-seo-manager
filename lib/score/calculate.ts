@@ -29,6 +29,7 @@ interface ScoreInput {
 interface ScoreBreakdownItem {
   label: string
   points: number
+  maxPoints: number
   passed: boolean
 }
 
@@ -52,19 +53,29 @@ export function calculateScores(content: ScoreInput): ScoreResult {
   const seoBreakdown: ScoreBreakdownItem[] = []
 
   const hasSeoTitle = !!content.seo_title
-  seoBreakdown.push({ label: 'SEO Title 존재', points: hasSeoTitle ? 15 : 0, passed: hasSeoTitle })
+  seoBreakdown.push({ label: 'SEO Title 존재', points: hasSeoTitle ? 15 : 0, maxPoints: 15, passed: hasSeoTitle })
 
   const seoTitleLenOk = !!content.seo_title && content.seo_title.length <= 60
-  seoBreakdown.push({ label: 'SEO Title 60자 이하', points: seoTitleLenOk ? 15 : 0, passed: seoTitleLenOk })
+  seoBreakdown.push({
+    label: 'SEO Title 60자 이하',
+    points: seoTitleLenOk ? 15 : 0,
+    maxPoints: 15,
+    passed: seoTitleLenOk,
+  })
 
   const hasMeta = !!content.meta_description
-  seoBreakdown.push({ label: 'Meta Description 존재', points: hasMeta ? 15 : 0, passed: hasMeta })
+  seoBreakdown.push({ label: 'Meta Description 존재', points: hasMeta ? 15 : 0, maxPoints: 15, passed: hasMeta })
 
   const metaLenOk = !!content.meta_description && content.meta_description.length <= 155
-  seoBreakdown.push({ label: 'Meta Description 155자 이하', points: metaLenOk ? 15 : 0, passed: metaLenOk })
+  seoBreakdown.push({
+    label: 'Meta Description 155자 이하',
+    points: metaLenOk ? 15 : 0,
+    maxPoints: 15,
+    passed: metaLenOk,
+  })
 
   const hasOg = !!content.og_title && !!content.og_description
-  seoBreakdown.push({ label: 'OG 태그 존재', points: hasOg ? 15 : 0, passed: hasOg })
+  seoBreakdown.push({ label: 'OG 태그 존재', points: hasOg ? 15 : 0, maxPoints: 15, passed: hasOg })
 
   // Canonical: canonical_url을 직접 지정(형식이 http/https URL일 때만 인정)했거나,
   // page_slug가 있거나, 게시판 글(gb5_bo_table+wr_id)이면 통과
@@ -72,13 +83,14 @@ export function calculateScores(content: ScoreInput): ScoreResult {
     (!!content.canonical_url && isValidHttpUrl(content.canonical_url)) ||
     !!content.page_slug ||
     (!!content.gb5_bo_table && !!content.gb5_wr_id)
-  seoBreakdown.push({ label: 'Canonical URL 설정', points: hasCanonical ? 15 : 0, passed: hasCanonical })
+  seoBreakdown.push({ label: 'Canonical URL 설정', points: hasCanonical ? 15 : 0, maxPoints: 15, passed: hasCanonical })
 
   // robots: 명시적으로 false가 아니면(미설정 포함) 통과 — 기본값은 색인 허용
   const robotsOk = content.robots_index !== false && content.robots_follow !== false
   seoBreakdown.push({
     label: robotsOk ? 'robots index/follow 허용' : 'robots noindex 또는 nofollow 설정됨',
     points: robotsOk ? 10 : 0,
+    maxPoints: 10,
     passed: robotsOk,
   })
 
@@ -89,13 +101,13 @@ export function calculateScores(content: ScoreInput): ScoreResult {
 
   const faqCount = content.faq_json?.length ?? 0
   const faqEnough = faqCount >= 3
-  aeoBreakdown.push({ label: 'FAQ 3개 이상', points: faqEnough ? 40 : 0, passed: faqEnough })
+  aeoBreakdown.push({ label: 'FAQ 3개 이상', points: faqEnough ? 40 : 0, maxPoints: 40, passed: faqEnough })
 
   const hasAeAnswer = !!content.ae_answer
-  aeoBreakdown.push({ label: '한 줄 답변 존재', points: hasAeAnswer ? 30 : 0, passed: hasAeAnswer })
+  aeoBreakdown.push({ label: '한 줄 답변 존재', points: hasAeAnswer ? 30 : 0, maxPoints: 30, passed: hasAeAnswer })
 
   const hasQaStructure = faqCount > 0
-  aeoBreakdown.push({ label: 'Q&A 구조 존재', points: hasQaStructure ? 30 : 0, passed: hasQaStructure })
+  aeoBreakdown.push({ label: 'Q&A 구조 존재', points: hasQaStructure ? 30 : 0, maxPoints: 30, passed: hasQaStructure })
 
   const aeoScore = aeoBreakdown.reduce((sum, item) => sum + item.points, 0)
 
@@ -103,13 +115,18 @@ export function calculateScores(content: ScoreInput): ScoreResult {
   const geoBreakdown: ScoreBreakdownItem[] = []
 
   const hasGeoSummary = !!content.geo_summary
-  geoBreakdown.push({ label: '요약 존재', points: hasGeoSummary ? 30 : 0, passed: hasGeoSummary })
+  geoBreakdown.push({ label: '요약 존재', points: hasGeoSummary ? 30 : 0, maxPoints: 30, passed: hasGeoSummary })
 
   const hasJsonLd = !!content.json_ld && Object.keys(content.json_ld).length > 0
-  geoBreakdown.push({ label: 'JSON-LD 존재', points: hasJsonLd ? 40 : 0, passed: hasJsonLd })
+  geoBreakdown.push({ label: 'JSON-LD 존재', points: hasJsonLd ? 40 : 0, maxPoints: 40, passed: hasJsonLd })
 
   const hasExpertise = !!content.geo_summary && content.geo_summary.length >= 50
-  geoBreakdown.push({ label: '전문성(요약 50자 이상)', points: hasExpertise ? 30 : 0, passed: hasExpertise })
+  geoBreakdown.push({
+    label: '전문성(요약 50자 이상)',
+    points: hasExpertise ? 30 : 0,
+    maxPoints: 30,
+    passed: hasExpertise,
+  })
 
   const geoScore = geoBreakdown.reduce((sum, item) => sum + item.points, 0)
 

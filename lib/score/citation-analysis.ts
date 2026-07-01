@@ -1,6 +1,7 @@
 interface ScoreBreakdownItem {
   label: string
   points: number
+  maxPoints: number
   passed: boolean
 }
 
@@ -79,22 +80,27 @@ export function analyzeCitation(input: CitationInput): CitationAnalysisResult {
   const breakdown: ScoreBreakdownItem[] = []
 
   const hasFaq = input.faqCount > 0
-  breakdown.push({ label: 'FAQ 존재', points: hasFaq ? 20 : 0, passed: hasFaq })
+  breakdown.push({ label: 'FAQ 존재', points: hasFaq ? 20 : 0, maxPoints: 20, passed: hasFaq })
 
   const hasSummary = !!input.geoSummary
-  breakdown.push({ label: '요약 존재', points: hasSummary ? 15 : 0, passed: hasSummary })
+  breakdown.push({ label: '요약 존재', points: hasSummary ? 15 : 0, maxPoints: 15, passed: hasSummary })
 
   const hasTable = hasTableTag(html)
-  breakdown.push({ label: '표 존재', points: hasTable ? 15 : 0, passed: hasTable })
+  breakdown.push({ label: '표 존재', points: hasTable ? 15 : 0, maxPoints: 15, passed: hasTable })
 
   const hasList = hasListTag(html)
-  breakdown.push({ label: '리스트 존재', points: hasList ? 15 : 0, passed: hasList })
+  breakdown.push({ label: '리스트 존재', points: hasList ? 15 : 0, maxPoints: 15, passed: hasList })
 
   const hasExternalSource = hasExternalSourceLink(html)
-  breakdown.push({ label: '신뢰 가능한 출처(외부링크) 존재', points: hasExternalSource ? 20 : 0, passed: hasExternalSource })
+  breakdown.push({
+    label: '신뢰 가능한 출처(외부링크) 존재',
+    points: hasExternalSource ? 20 : 0,
+    maxPoints: 20,
+    passed: hasExternalSource,
+  })
 
   const hasDefinition = hasDefinitionPattern(plainText, input.title)
-  breakdown.push({ label: '정의문 존재(도입부)', points: hasDefinition ? 15 : 0, passed: hasDefinition })
+  breakdown.push({ label: '정의문 존재(도입부)', points: hasDefinition ? 15 : 0, maxPoints: 15, passed: hasDefinition })
 
   const citation_score = breakdown.reduce((sum, item) => sum + item.points, 0)
 

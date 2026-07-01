@@ -7,6 +7,7 @@ import EntitySemanticCard from './EntitySemanticCard'
 interface ScoreBreakdownItem {
   label: string
   points: number
+  maxPoints: number
   passed: boolean
 }
 
