@@ -76,7 +76,7 @@ export default function EntitySemanticCard({
     setError(null)
     try {
       const payload = liveSource
-        ? { title: liveSource.title, body: liveSource.body }
+        ? { id: contentId, title: liveSource.title, body: liveSource.body }
         : { id: contentId }
 
       const res = await fetch('/api/ai/entity-semantic', {
