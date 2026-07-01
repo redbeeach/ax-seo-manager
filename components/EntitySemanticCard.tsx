@@ -37,15 +37,39 @@ const ENTITY_META: Record<EntityType, { emoji: string; label: string; bg: string
 export default function EntitySemanticCard({
   contentId,
   liveSource,
+  initialData,
 }: {
   contentId: string
   liveSource?: { title: string | null; body: string; url: string } | null
+  initialData?: {
+    topic: string | null
+    entities: Record<string, string>[]
+    related_terms_coverage: { term: string; reason: string; covered: boolean }[]
+    covered_count: number
+    total_count: number
+    coverage_ratio: number
+    is_live: boolean
+    analyzed_at: string
+  } | null
 }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<EntitySemanticResult | null>(null)
-  const [analyzedFromLive, setAnalyzedFromLive] = useState(false)
-  const [analyzedAt, setAnalyzedAt] = useState<Date | null>(null)
+  const [result, setResult] = useState<EntitySemanticResult | null>(
+    initialData
+      ? {
+          entities: (initialData.entities ?? []) as unknown as EntityItem[],
+          topic: initialData.topic ?? '',
+          related_terms_coverage: initialData.related_terms_coverage ?? [],
+          covered_count: initialData.covered_count ?? 0,
+          total_count: initialData.total_count ?? 0,
+          coverage_ratio: initialData.coverage_ratio ?? 0,
+        }
+      : null
+  )
+  const [analyzedFromLive, setAnalyzedFromLive] = useState(initialData?.is_live ?? false)
+  const [analyzedAt, setAnalyzedAt] = useState<Date | null>(
+    initialData?.analyzed_at ? new Date(initialData.analyzed_at) : null
+  )
 
   const handleAnalyze = async () => {
     setLoading(true)

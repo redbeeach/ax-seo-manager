@@ -187,14 +187,37 @@ export async function POST(request: NextRequest) {
     const coveredCount = coverage.filter((c) => c.covered).length
     const coverageRatio = coverage.length > 0 ? coveredCount / coverage.length : 0
 
-    return NextResponse.json({
+    const result = {
       entities: aiResult.entities,
       topic: aiResult.topic,
       related_terms_coverage: coverage,
       covered_count: coveredCount,
       total_count: coverage.length,
       coverage_ratio: coverageRatio,
-    })
+    }
+
+    // content_id 있으면 분석 결과 DB에 저장 (새로고침 후에도 유지)
+    if (id) {
+      const isLive = !!(title && body) // title+body 직접 전달 = 크롤링된 Live 데이터
+      await supabaseAdmin
+        .from('content_entity_analyses')
+        .upsert(
+          {
+            content_id: id,
+            analyzed_at: new Date().toISOString(),
+            is_live: isLive,
+            topic: result.topic,
+            entities: result.entities,
+            related_terms_coverage: result.related_terms_coverage,
+            covered_count: result.covered_count,
+            total_count: result.total_count,
+            coverage_ratio: result.coverage_ratio,
+          },
+          { onConflict: 'content_id' }
+        )
+    }
+
+    return NextResponse.json(result)
   } catch (err) {
     console.error('[ai-entity-semantic-error]', err)
     return NextResponse.json(

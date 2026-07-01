@@ -88,6 +88,13 @@ export default async function ContentDetailPage({
     .eq('content_id', id)
     .single()
 
+  // Entity/Semantic 분석 결과 조회
+  const { data: entityAnalysis } = await supabaseAdmin
+    .from('content_entity_analyses')
+    .select('*')
+    .eq('content_id', id)
+    .single()
+
   // 점수 히스토리 조회 (최근 14개)
   const { data: scoreHistory } = await supabaseAdmin
     .from('content_score_history')
@@ -197,6 +204,7 @@ export default async function ContentDetailPage({
           keywords={keywords}
           initialLiveData={liveAnalysis ?? null}
           scoreHistory={scoreHistory ?? []}
+          initialEntityData={entityAnalysis ?? null}
         />
 
         <CompareCard

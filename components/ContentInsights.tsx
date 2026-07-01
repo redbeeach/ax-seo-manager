@@ -45,6 +45,17 @@ interface HistoryRecord {
   readability_score: number | null
 }
 
+interface EntityAnalysis {
+  topic: string | null
+  entities: Record<string, string>[]
+  related_terms_coverage: { term: string; reason: string; covered: boolean }[]
+  covered_count: number
+  total_count: number
+  coverage_ratio: number
+  is_live: boolean
+  analyzed_at: string
+}
+
 interface ContentInsightsProps {
   contentId: string
   seo: ScoreGroup
@@ -58,6 +69,7 @@ interface ContentInsightsProps {
   keywords: KeywordData
   initialLiveData: LiveAnalysis | null
   scoreHistory: HistoryRecord[]
+  initialEntityData: EntityAnalysis | null
 }
 
 export default function ContentInsights({
@@ -73,6 +85,7 @@ export default function ContentInsights({
   keywords,
   initialLiveData,
   scoreHistory,
+  initialEntityData,
 }: ContentInsightsProps) {
   const [liveSource, setLiveSource] = useState<{ title: string | null; body: string; url: string } | null>(
     null
@@ -108,7 +121,7 @@ export default function ContentInsights({
         initialCrawlResult={initialCrawlResult}
       />
       <HistoryChart history={scoreHistory} />
-      <EntitySemanticCard contentId={contentId} liveSource={liveSource} />
+      <EntitySemanticCard contentId={contentId} liveSource={liveSource} initialData={initialEntityData} />
     </>
   )
 }
