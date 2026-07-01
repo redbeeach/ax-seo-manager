@@ -30,6 +30,7 @@ interface ContentInsightsProps {
   dbContent: ScoreGroup
   citation: ScoreGroup
   eeat: ScoreGroup
+  readability: ScoreGroup
   showBreakdown: boolean
   keywords: KeywordData
 }
@@ -42,6 +43,7 @@ export default function ContentInsights({
   dbContent,
   citation,
   eeat,
+  readability,
   showBreakdown,
   keywords,
 }: ContentInsightsProps) {
@@ -59,6 +61,7 @@ export default function ContentInsights({
         dbContent={dbContent}
         citation={citation}
         eeat={eeat}
+        readability={readability}
         showBreakdown={showBreakdown}
         keywords={keywords}
         onCrawlResult={setLiveSource}

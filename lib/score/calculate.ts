@@ -1,6 +1,7 @@
 import { analyzeContent, ContentAnalysisResult } from './content-analysis'
 import { analyzeCitation, CitationAnalysisResult } from './citation-analysis'
 import { analyzeEeat, EeatAnalysisResult } from './eeat-analysis'
+import { analyzeReadability, ReadabilityAnalysisResult } from './readability-analysis'
 import { isValidHttpUrl } from '@/lib/gb5/url'
 
 interface FaqItem {
@@ -41,15 +42,18 @@ export interface ScoreResult {
   content_score: number
   citation_score: number
   eeat_score: number
+  readability_score: number
   seo_breakdown: ScoreBreakdownItem[]
   aeo_breakdown: ScoreBreakdownItem[]
   geo_breakdown: ScoreBreakdownItem[]
   content_breakdown: ScoreBreakdownItem[]
   citation_breakdown: ScoreBreakdownItem[]
   eeat_breakdown: ScoreBreakdownItem[]
+  readability_breakdown: ScoreBreakdownItem[]
   content_stats: ContentAnalysisResult['stats']
   citation_stats: CitationAnalysisResult['stats']
   eeat_stats: EeatAnalysisResult['stats']
+  readability_stats: ReadabilityAnalysisResult['stats']
 }
 
 export function calculateScores(content: ScoreInput): ScoreResult {
@@ -151,6 +155,9 @@ export function calculateScores(content: ScoreInput): ScoreResult {
     body: content.body ?? null,
   })
 
+  // ===== 읽기 난이도 (평균 문장 길이/긴 문장 비율/단락 수) =====
+  const readabilityAnalysis = analyzeReadability({ body: content.body ?? null })
+
   return {
     seo_score: seoScore,
     aeo_score: aeoScore,
@@ -158,14 +165,17 @@ export function calculateScores(content: ScoreInput): ScoreResult {
     content_score: contentAnalysis.content_score,
     citation_score: citationAnalysis.citation_score,
     eeat_score: eeatAnalysis.eeat_score,
+    readability_score: readabilityAnalysis.readability_score,
     seo_breakdown: seoBreakdown,
     aeo_breakdown: aeoBreakdown,
     geo_breakdown: geoBreakdown,
     content_breakdown: contentAnalysis.content_breakdown,
     citation_breakdown: citationAnalysis.citation_breakdown,
     eeat_breakdown: eeatAnalysis.eeat_breakdown,
+    readability_breakdown: readabilityAnalysis.readability_breakdown,
     content_stats: contentAnalysis.stats,
     citation_stats: citationAnalysis.stats,
     eeat_stats: eeatAnalysis.stats,
+    readability_stats: readabilityAnalysis.stats,
   }
 }

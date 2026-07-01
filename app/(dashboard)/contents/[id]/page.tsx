@@ -9,6 +9,7 @@ import { buildLiveUrl } from '@/lib/gb5/url'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
 import ContentInsights from '@/components/ContentInsights'
+import CompareCard from '@/components/CompareCard'
 
 export async function generateMetadata({
   params,
@@ -147,8 +148,17 @@ export default async function ContentDetailPage({
           dbContent={{ score: scores.content_score, breakdown: scores.content_breakdown }}
           citation={{ score: scores.citation_score, breakdown: scores.citation_breakdown }}
           eeat={{ score: scores.eeat_score, breakdown: scores.eeat_breakdown }}
+          readability={{ score: scores.readability_score, breakdown: scores.readability_breakdown }}
           showBreakdown={!!content.seo_title}
           keywords={keywords}
+        />
+
+        <CompareCard
+          myScores={{
+            content_score: scores.content_score,
+            citation_score: scores.citation_score,
+            readability_score: scores.readability_score,
+          }}
         />
 
         <div className="mb-7">

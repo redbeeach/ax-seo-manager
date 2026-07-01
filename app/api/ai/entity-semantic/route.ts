@@ -1,39 +1,114 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
-interface AiEntityResult {
-  entities: string[]
-  topic: string
-  related_terms: string[]
+type EntityType = 'Person' | 'Organization' | 'Location' | 'Technology' | 'Product' | 'Event' | 'Other'
+
+interface EntityItem {
+  name: string
+  type: EntityType
 }
 
+interface RelatedTerm {
+  term: string
+  reason: string
+}
+
+interface AiEntityResult {
+  entities: EntityItem[]
+  topic: string
+  related_terms: RelatedTerm[]
+}
+
+// ── 룰베이스 사전 추출 ──────────────────────────────────────
 function stripTags(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<[^>]+>/g, '')
+    .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
-async function callOpenAI(title: string, plainText: string): Promise<AiEntityResult> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY가 설정되어 있지 않습니다.')
+function extractTagTexts(html: string, tag: string): string[] {
+  const re = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi')
+  const results: string[] = []
+  let m
+  while ((m = re.exec(html)) !== null) {
+    const text = stripTags(m[1]).trim()
+    if (text.length > 0) results.push(text)
   }
-
-  const systemPrompt = `당신은 콘텐츠의 Entity(개체)와 주제를 분석하는 전문가입니다.
-주어진 글의 제목과 본문을 분석해서 아래 JSON 형식으로만 답변하세요. 다른 설명은 절대 붙이지 마세요.
-
-{
-  "entities": ["본문에 실제로 등장하는 핵심 개체명(인물/조직/장소/제품/연도 등) 5~10개"],
-  "topic": "이 글의 핵심 주제를 한 단어 또는 짧은 구로",
-  "related_terms": ["이 주제를 다룬 글이라면 자연스럽게 등장해야 할 연관 단어 6~10개 (본문에 실제로 있는지 여부와 무관하게, 주제 기준으로 기대되는 단어)"]
+  return results
 }
 
-entities는 본문에서 실제로 언급된 단어만 추출하세요. related_terms는 추측 기반 기대 단어이므로 본문에 없어도 됩니다.`
+function topTfWords(plainText: string, topN = 20): string[] {
+  const words = plainText
+    .split(/[\s\n\t,.\(\)\[\]{}!?;:"']+/)
+    .map((w) => w.trim())
+    .filter((w) => w.length >= 2)
 
-  const userPrompt = `제목: ${title}\n\n본문:\n${plainText.slice(0, 4000)}`
+  const freq: Record<string, number> = {}
+  for (const w of words) {
+    freq[w] = (freq[w] ?? 0) + 1
+  }
+
+  return Object.entries(freq)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN)
+    .map(([w]) => w)
+}
+
+function extractAnchors(html: string): string[] {
+  const anchors = html.match(/<a\b[^>]*>([\s\S]*?)<\/a>/gi) ?? []
+  return anchors.map((a) => stripTags(a).trim()).filter((t) => t.length >= 2)
+}
+
+function rulebBaseHints(title: string, html: string): string {
+  const plain = stripTags(html)
+  const h1s = extractTagTexts(html, 'h1')
+  const h2s = extractTagTexts(html, 'h2')
+  const anchors = extractAnchors(html).slice(0, 15)
+  const tf = topTfWords(plain)
+
+  const lines = [
+    `제목: ${title}`,
+    h1s.length > 0 ? `H1: ${h1s.join(' / ')}` : '',
+    h2s.length > 0 ? `H2: ${h2s.slice(0, 6).join(' / ')}` : '',
+    tf.length > 0 ? `자주 등장하는 단어(TF): ${tf.join(', ')}` : '',
+    anchors.length > 0 ? `링크 앵커 텍스트: ${anchors.join(', ')}` : '',
+  ].filter(Boolean)
+
+  return lines.join('\n')
+}
+
+// ── OpenAI 호출 ───────────────────────────────────────────────
+async function callOpenAI(title: string, html: string): Promise<AiEntityResult> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) throw new Error('OPENAI_API_KEY가 설정되어 있지 않습니다.')
+
+  const plainText = stripTags(html)
+  const hints = rulebBaseHints(title, html)
+
+  const systemPrompt = `당신은 SEO와 콘텐츠 분석 전문가입니다.
+아래 사전 추출된 힌트와 본문을 바탕으로 JSON만 반환하세요. 다른 말 금지.
+
+{
+  "entities": [
+    { "name": "엔티티명", "type": "Person|Organization|Location|Technology|Product|Event|Other" }
+  ],
+  "topic": "핵심 주제 (한 단어 또는 짧은 구)",
+  "related_terms": [
+    { "term": "관련 단어", "reason": "이 단어가 왜 필요한지 한 줄 이유 (20자 이내)" }
+  ]
+}
+
+규칙:
+- entities: 본문에 실제 등장하는 고유 개체만 5~10개, 중요도 순 정렬
+- topic: 이 글의 핵심 주제 하나
+- related_terms: 이 주제의 글이라면 자연스럽게 포함되어야 할 단어 6~10개 (본문에 없어도 됨)
+- reason은 한국어로 20자 이내`
+
+  const userPrompt = `[사전 추출 힌트]\n${hints}\n\n[본문 일부]\n${plainText.slice(0, 3000)}`
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -52,15 +127,13 @@ entities는 본문에서 실제로 언급된 단어만 추출하세요. related_
   })
 
   if (!response.ok) {
-    const errText = await response.text()
-    throw new Error(`OpenAI API 오류 (${response.status}): ${errText}`)
+    const err = await response.text()
+    throw new Error(`OpenAI API 오류 (${response.status}): ${err}`)
   }
 
   const data = await response.json()
   const content = data.choices?.[0]?.message?.content
-  if (!content) {
-    throw new Error('AI 응답에서 내용을 찾을 수 없습니다.')
-  }
+  if (!content) throw new Error('AI 응답에서 내용을 찾을 수 없습니다.')
 
   let parsed: AiEntityResult
   try {
@@ -76,6 +149,7 @@ entities는 본문에서 실제로 언급된 단어만 추출하세요. related_
   return parsed
 }
 
+// ── Route Handler ─────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
     const { id, title, body } = await request.json()
@@ -101,14 +175,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'title과 body(또는 id)가 필요합니다.' }, { status: 400 })
     }
 
-    const plainText = stripTags(resolvedBody)
-    const aiResult = await callOpenAI(resolvedTitle, plainText)
+    const aiResult = await callOpenAI(resolvedTitle, resolvedBody)
 
-    // 관련어가 실제 본문에 포함되는지는 AI 추측이 아니라 코드로 직접 검사 (정확도 보장)
-    const lowerPlainText = plainText.toLowerCase()
-    const coverage = aiResult.related_terms.map((term) => ({
-      term,
-      covered: lowerPlainText.includes(term.toLowerCase()),
+    // Semantic 포함 여부: AI 추측 아닌 코드로 직접 검사
+    const lowerPlain = stripTags(resolvedBody).toLowerCase()
+    const coverage = aiResult.related_terms.map((rt) => ({
+      term: rt.term,
+      reason: rt.reason,
+      covered: lowerPlain.includes(rt.term.toLowerCase()),
     }))
     const coveredCount = coverage.filter((c) => c.covered).length
     const coverageRatio = coverage.length > 0 ? coveredCount / coverage.length : 0

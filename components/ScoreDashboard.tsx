@@ -40,6 +40,7 @@ interface ScoreDashboardProps {
   dbContent: ScoreGroup
   citation: ScoreGroup
   eeat: ScoreGroup
+  readability: ScoreGroup
   showBreakdown: boolean
   keywords: KeywordData
   onCrawlResult?: (result: { title: string | null; body: string; url: string } | null) => void
@@ -72,6 +73,7 @@ export default function ScoreDashboard({
   dbContent,
   citation,
   eeat,
+  readability,
   showBreakdown,
   keywords,
   onCrawlResult,
@@ -112,6 +114,7 @@ export default function ScoreDashboard({
     { label: 'Content', score: content.score, items: content.breakdown },
     { label: 'AI Citation', score: citation.score, items: citation.breakdown },
     { label: 'E-E-A-T', score: eeat.score, items: eeat.breakdown },
+    { label: 'Readability', score: readability.score, items: readability.breakdown },
   ]
 
   const recommendations = scoreCards.flatMap((group) =>
@@ -129,10 +132,61 @@ export default function ScoreDashboard({
   const avgCurrent = Math.round(totalCurrent / scoreCards.length)
   const avgProjected = Math.round(totalProjected / scoreCards.length)
 
+  const overallScore = avgCurrent
+
+  function getGrade(score: number) {
+    if (score >= 90) return { grade: 'A+', color: '#22c55e' }
+    if (score >= 80) return { grade: 'A',  color: '#22c55e' }
+    if (score >= 70) return { grade: 'B',  color: '#eab308' }
+    if (score >= 60) return { grade: 'C',  color: '#f97316' }
+    if (score >= 50) return { grade: 'D',  color: '#ef4444' }
+    return { grade: 'F', color: '#b91c1c' }
+  }
+
+  const { grade, color: gradeColor } = getGrade(overallScore)
+
   return (
     <div className="mb-8 border-t border-line pt-6">
+      {/* Overall Score 헤더 */}
+      <div className="mb-5 flex items-center gap-6 rounded-xl border border-line bg-surface p-5">
+        <div>
+          <p className="mb-1 text-[12px] font-medium uppercase tracking-wide text-ink-hint">Overall Score</p>
+          <div className="flex items-end gap-3">
+            <span className="text-[52px] font-bold leading-none tabular-nums" style={{ color: gradeColor }}>
+              {overallScore}
+            </span>
+            <span className="mb-1 text-[18px] text-ink-hint">/100</span>
+            <span
+              className="mb-1 rounded-lg px-3 py-1 text-[22px] font-black leading-none text-white"
+              style={{ backgroundColor: gradeColor }}
+            >
+              {grade}
+            </span>
+          </div>
+        </div>
+        <div className="flex-1">
+          <div className="mb-1.5 flex items-center justify-between text-[12px] text-ink-hint">
+            <span>0</span>
+            <span>50</span>
+            <span>100</span>
+          </div>
+          <div className="h-3 w-full overflow-hidden rounded-full" style={{ backgroundColor: '#E5E7EB' }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${overallScore}%`, backgroundColor: gradeColor }}
+            />
+          </div>
+          <p className="mt-2 text-[12px] text-ink-hint">
+            모든 항목 수정 시 예상{' '}
+            <span className="font-bold" style={{ color: gradeColor }}>
+              {avgProjected}점 ({getGrade(avgProjected).grade})
+            </span>
+            으로 상승
+          </p>
+        </div>
+      </div>
       {/* 점수 카드 5단 */}
-      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {scoreCards.map((group) => {
           const ratio = group.score / 100
           const widthPct = Math.min(100, Math.round(ratio * 100))
@@ -216,7 +270,7 @@ export default function ScoreDashboard({
 
       {/* 개선 추천 */}
       <div className="mb-8 rounded-xl border border-line bg-surface-muted p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between">
           <p className="text-[14px] font-bold text-ink">🔥 개선 추천</p>
           {recommendations.length > 0 && (
             <p className="text-[12px] text-ink-hint">
@@ -229,27 +283,54 @@ export default function ScoreDashboard({
         </div>
         {recommendations.length === 0 ? (
           <p className="text-[13px] text-score-good">감점 항목 없음 — 완벽해요</p>
-        ) : (
-          <ol className="grid grid-cols-1 gap-2 text-[13px] lg:grid-cols-2">
-            {recommendations.map((rec, i) => (
-              <li key={i} className="flex items-start gap-2 rounded-lg border border-line bg-surface px-3 py-2">
-                <span className="mt-0.5 shrink-0 text-ink-hint">{i + 1}.</span>
-                <span className="text-ink-secondary">
-                  <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-ink">
-                    {rec.group}
-                  </span>{' '}
-                  {rec.label}
-                  <span className="text-score-good"> (예상 +{rec.gainPoints}pt)</span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
+        ) : (() => {
+          const sorted = [...recommendations].sort((a, b) => b.gainPoints - a.gainPoints)
+          const tiers = [
+            { label: '🔥 영향도 매우 큼', min: 20, max: Infinity, color: 'text-score-bad' },
+            { label: '🔸 영향도 큼',      min: 15, max: 19,       color: 'text-score-warn' },
+            { label: '⭐ 영향도 보통',    min: 10, max: 14,       color: 'text-score-mid' },
+            { label: '💡 영향도 낮음',    min: 0,  max: 9,        color: 'text-ink-hint' },
+          ]
+
+          let globalIdx = 0
+          return (
+            <div className="space-y-4">
+              {tiers.map((tier) => {
+                const items = sorted.filter(
+                  (r) => r.gainPoints >= tier.min && r.gainPoints <= tier.max
+                )
+                if (items.length === 0) return null
+                return (
+                  <div key={tier.label}>
+                    <p className={`mb-2 text-[12px] font-bold ${tier.color}`}>{tier.label}</p>
+                    <ol className="grid grid-cols-1 gap-2 text-[13px] lg:grid-cols-2">
+                      {items.map((rec) => {
+                        const idx = ++globalIdx
+                        return (
+                          <li key={rec.label} className="flex items-start gap-2 rounded-lg border border-line bg-surface px-3 py-2">
+                            <span className="mt-0.5 shrink-0 text-ink-hint">{idx}.</span>
+                            <span className="text-ink-secondary">
+                              <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium text-ink">
+                                {rec.group}
+                              </span>{' '}
+                              {rec.label}
+                              <span className="text-score-good"> (예상 +{rec.gainPoints}pt)</span>
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ol>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
 
       {/* 5단 브레이크다운 + 키워드 분석 */}
       {showBreakdown && (
-        <div className="grid grid-cols-2 gap-6 border-t border-line pt-6 md:grid-cols-3 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-6 border-t border-line pt-6 sm:grid-cols-4">
           {scoreCards.map((col) => (
             <div key={col.label}>
               <p className="mb-3 text-[15px] font-bold text-ink">

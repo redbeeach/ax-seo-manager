@@ -51,6 +51,12 @@ const TIPS: { match: string; tip: string }[] = [
   { match: '발행처(publisher) 명시', tip: 'JSON-LD에 publisher.name이 있으면 Authoritativeness(권위성)를 검색엔진에 명확히 전달합니다.' },
   { match: '본문 깊이(2000자 이상)', tip: '2000자 이상의 깊이 있는 콘텐츠는 Experience(경험)와 Expertise(전문성)를 나타냅니다.' },
   { match: '외부 출처 링크 존재', tip: '신뢰할 수 있는 외부 사이트 링크는 Trustworthiness(신뢰성)를 높이고 AI 인용 가능성을 높입니다.' },
+
+  // 읽기 난이도
+  { match: '평균 문장 길이', tip: '15~50자가 적정 범위입니다. 너무 길면 독자가 지치고, AI도 문장 단위로 인용하기 어렵습니다.' },
+  { match: '긴 문장(80자↑) 비율', tip: '80자 이상의 긴 문장이 20% 이상이면 가독성이 크게 떨어집니다. 문장을 나눠 쓰세요.' },
+  { match: '문장 수', tip: '5개 미만이면 내용이 너무 얇습니다. 충분한 분량으로 작성하세요.' },
+  { match: '단락 수', tip: '단락이 3개 이상이면 내용이 잘 구분돼 독자와 AI 모두 읽기 편합니다.' },
 ]
 
 export function getTip(label: string): string | null {
