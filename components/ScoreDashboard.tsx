@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import Tooltip from '@/components/Tooltip'
+import { getTip } from '@/lib/score/breakdown-tips'
 
 interface ScoreBreakdownItem {
   label: string
@@ -37,20 +39,23 @@ interface ScoreDashboardProps {
   geo: ScoreGroup
   dbContent: ScoreGroup
   citation: ScoreGroup
+  eeat: ScoreGroup
   showBreakdown: boolean
   keywords: KeywordData
   onCrawlResult?: (result: { title: string | null; body: string; url: string } | null) => void
 }
 
 function tierFill(ratio: number) {
-  if (ratio >= 0.8) return '#22c55e'
-  if (ratio >= 0.5) return '#f59e0b'
-  return '#ef4444'
+  if (ratio >= 0.9) return '#22c55e'  // 90+ 초록
+  if (ratio >= 0.7) return '#eab308'  // 70+ 노랑
+  if (ratio >= 0.5) return '#f97316'  // 50+ 주황
+  return '#ef4444'                    // ~49 빨강
 }
 
 function tierText(ratio: number) {
-  if (ratio >= 0.8) return 'text-score-good'
-  if (ratio >= 0.5) return 'text-score-mid'
+  if (ratio >= 0.9) return 'text-score-good'
+  if (ratio >= 0.7) return 'text-score-mid'
+  if (ratio >= 0.5) return 'text-score-warn'
   return 'text-score-bad'
 }
 
@@ -66,6 +71,7 @@ export default function ScoreDashboard({
   geo,
   dbContent,
   citation,
+  eeat,
   showBreakdown,
   keywords,
   onCrawlResult,
@@ -105,6 +111,7 @@ export default function ScoreDashboard({
     { label: 'GEO', score: geo.score, items: geo.breakdown },
     { label: 'Content', score: content.score, items: content.breakdown },
     { label: 'AI Citation', score: citation.score, items: citation.breakdown },
+    { label: 'E-E-A-T', score: eeat.score, items: eeat.breakdown },
   ]
 
   const recommendations = scoreCards.flatMap((group) =>
@@ -125,7 +132,7 @@ export default function ScoreDashboard({
   return (
     <div className="mb-8 border-t border-line pt-6">
       {/* 점수 카드 5단 */}
-      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {scoreCards.map((group) => {
           const ratio = group.score / 100
           const widthPct = Math.min(100, Math.round(ratio * 100))
@@ -242,7 +249,7 @@ export default function ScoreDashboard({
 
       {/* 5단 브레이크다운 + 키워드 분석 */}
       {showBreakdown && (
-        <div className="grid grid-cols-2 gap-6 border-t border-line pt-6 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-6 border-t border-line pt-6 md:grid-cols-3 lg:grid-cols-7">
           {scoreCards.map((col) => (
             <div key={col.label}>
               <p className="mb-3 text-[15px] font-bold text-ink">
@@ -250,12 +257,23 @@ export default function ScoreDashboard({
                 <span className={tierText(col.score / 100)}>{col.score}점</span>
               </p>
               <ul className="space-y-1.5 text-[13px]">
-                {col.items.map((item, i) => (
-                  <li key={i} className={item.passed ? 'text-ink-secondary' : 'text-score-bad'}>
-                    {item.passed ? '✓' : '✗'} {item.label} ({item.passed ? '+' : '-'}
-                    {item.maxPoints}pt)
-                  </li>
-                ))}
+                {col.items.map((item, i) => {
+                  const tip = getTip(item.label)
+                  const text = (
+                    <span>
+                      {item.passed ? '✓' : '✗'} {item.label} ({item.passed ? '+' : '-'}
+                      {item.maxPoints}pt)
+                      {tip && (
+                        <span className="ml-1 cursor-help text-ink-hint">ⓘ</span>
+                      )}
+                    </span>
+                  )
+                  return (
+                    <li key={i} className={item.passed ? 'text-ink-secondary' : 'text-score-bad'}>
+                      {tip ? <Tooltip text={tip}>{text}</Tooltip> : text}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}

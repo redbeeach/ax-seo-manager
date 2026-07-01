@@ -15,6 +15,8 @@ export interface CitationAnalysisResult {
     hasSummary: boolean
     hasExternalSource: boolean
     hasDefinition: boolean
+    hasH2Structure: boolean
+    hasCitationMark: boolean
   }
 }
 
@@ -52,8 +54,6 @@ function hasExternalSourceLink(html: string, ownDomainHint = 'hby1126hh.mycafe24
   })
 }
 
-// 본문 도입부에 "~란", "~이란", "~는 무엇", "정의" 등 정의문 패턴이 있는지 검사하는 휴리스틱.
-// 완벽하진 않지만 정의문이 보통 글 도입부에 등장한다는 점을 활용한 1차 필터.
 function hasDefinitionPattern(plainText: string, title?: string | null): boolean {
   const intro = plainText.slice(0, 400)
   const titleWord = title ? title.trim().split(/\s+/)[0] : ''
@@ -66,7 +66,6 @@ function hasDefinitionPattern(plainText: string, title?: string | null): boolean
 
   if (patterns.some((p) => p.test(intro))) return true
 
-  // 제목 키워드 + "는/은 ~이다/입니다" 형태도 정의문으로 인정
   if (titleWord && new RegExp(`${titleWord}(은|는)\\s+.{0,30}(이다|입니다|다\\.)`).test(intro)) {
     return true
   }
@@ -74,33 +73,67 @@ function hasDefinitionPattern(plainText: string, title?: string | null): boolean
   return false
 }
 
+function hasH2Structure(html: string): boolean {
+  const h2Tags = html.match(/<h2[\s>]/gi)
+  return h2Tags ? h2Tags.length >= 2 : false
+}
+
+// blockquote/cite 태그 또는 "출처:", "참고:", "Source:" 텍스트 패턴 체크
+function hasCitationMark(html: string): boolean {
+  if (/<blockquote\b|<cite\b/i.test(html)) return true
+  const plain = stripTags(html)
+  return /(출처|참고|Source|Reference)\s*[:：]/i.test(plain)
+}
+
 export function analyzeCitation(input: CitationInput): CitationAnalysisResult {
   const html = input.body ?? ''
   const plainText = stripTags(html)
   const breakdown: ScoreBreakdownItem[] = []
 
+  // 총합 100pt: 15+15+10+10+15+10+10+15 = 100
   const hasFaq = input.faqCount > 0
-  breakdown.push({ label: 'FAQ 존재', points: hasFaq ? 20 : 0, maxPoints: 20, passed: hasFaq })
+  breakdown.push({ label: 'FAQ 존재', points: hasFaq ? 15 : 0, maxPoints: 15, passed: hasFaq })
 
   const hasSummary = !!input.geoSummary
   breakdown.push({ label: '요약 존재', points: hasSummary ? 15 : 0, maxPoints: 15, passed: hasSummary })
 
   const hasTable = hasTableTag(html)
-  breakdown.push({ label: '표 존재', points: hasTable ? 15 : 0, maxPoints: 15, passed: hasTable })
+  breakdown.push({ label: '표 존재', points: hasTable ? 10 : 0, maxPoints: 10, passed: hasTable })
 
   const hasList = hasListTag(html)
-  breakdown.push({ label: '리스트 존재', points: hasList ? 15 : 0, maxPoints: 15, passed: hasList })
+  breakdown.push({ label: '리스트 존재', points: hasList ? 10 : 0, maxPoints: 10, passed: hasList })
 
   const hasExternalSource = hasExternalSourceLink(html)
   breakdown.push({
     label: '신뢰 가능한 출처(외부링크) 존재',
-    points: hasExternalSource ? 20 : 0,
-    maxPoints: 20,
+    points: hasExternalSource ? 15 : 0,
+    maxPoints: 15,
     passed: hasExternalSource,
   })
 
   const hasDefinition = hasDefinitionPattern(plainText, input.title)
-  breakdown.push({ label: '정의문 존재(도입부)', points: hasDefinition ? 15 : 0, maxPoints: 15, passed: hasDefinition })
+  breakdown.push({
+    label: '정의문 존재(도입부)',
+    points: hasDefinition ? 10 : 0,
+    maxPoints: 10,
+    passed: hasDefinition,
+  })
+
+  const hasH2 = hasH2Structure(html)
+  breakdown.push({
+    label: 'H2 섹션 구조(2개 이상)',
+    points: hasH2 ? 10 : 0,
+    maxPoints: 10,
+    passed: hasH2,
+  })
+
+  const hasCitation = hasCitationMark(html)
+  breakdown.push({
+    label: '출처 표기(blockquote/cite/출처:)',
+    points: hasCitation ? 15 : 0,
+    maxPoints: 15,
+    passed: hasCitation,
+  })
 
   const citation_score = breakdown.reduce((sum, item) => sum + item.points, 0)
 
@@ -114,6 +147,8 @@ export function analyzeCitation(input: CitationInput): CitationAnalysisResult {
       hasSummary,
       hasExternalSource,
       hasDefinition,
+      hasH2Structure: hasH2,
+      hasCitationMark: hasCitation,
     },
   }
 }

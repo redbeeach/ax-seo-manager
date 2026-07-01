@@ -8,8 +8,6 @@ import { calculateScores } from '@/lib/score/calculate'
 import { buildLiveUrl } from '@/lib/gb5/url'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
-
-import EntitySemanticCard from '@/components/EntitySemanticCard'
 import ContentInsights from '@/components/ContentInsights'
 
 export async function generateMetadata({
@@ -101,7 +99,7 @@ export default async function ContentDetailPage({
               </h1>
               {content.gb5_bo_table && content.gb5_wr_id && (
                 
-                <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
+                  <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
@@ -148,10 +146,10 @@ export default async function ContentDetailPage({
           geo={{ score: scores.geo_score, breakdown: scores.geo_breakdown }}
           dbContent={{ score: scores.content_score, breakdown: scores.content_breakdown }}
           citation={{ score: scores.citation_score, breakdown: scores.citation_breakdown }}
+          eeat={{ score: scores.eeat_score, breakdown: scores.eeat_breakdown }}
           showBreakdown={!!content.seo_title}
           keywords={keywords}
         />
-        <EntitySemanticCard contentId={id} />
 
         <div className="mb-7">
           <AiOptimizeButton id={id} title={content.title} body={content.body} />

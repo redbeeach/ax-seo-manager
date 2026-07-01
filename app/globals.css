@@ -14,7 +14,8 @@
   --color-surface-muted: #F4F4F5;
   --color-line: #E4E4E7;
   --color-score-good: #15803D;
-  --color-score-mid: #B45309;
+  --color-score-mid: #A16207;
+  --color-score-warn: #C2410C;
   --color-score-bad: #B91C1C;
 }
 
@@ -35,6 +36,7 @@
   --color-line: var(--color-line);
   --color-score-good: var(--color-score-good);
   --color-score-mid: var(--color-score-mid);
+  --color-score-warn: var(--color-score-warn);
   --color-score-bad: var(--color-score-bad);
 }
 

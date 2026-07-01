@@ -1,5 +1,6 @@
 import { analyzeContent, ContentAnalysisResult } from './content-analysis'
 import { analyzeCitation, CitationAnalysisResult } from './citation-analysis'
+import { analyzeEeat, EeatAnalysisResult } from './eeat-analysis'
 import { isValidHttpUrl } from '@/lib/gb5/url'
 
 interface FaqItem {
@@ -39,13 +40,16 @@ export interface ScoreResult {
   geo_score: number
   content_score: number
   citation_score: number
+  eeat_score: number
   seo_breakdown: ScoreBreakdownItem[]
   aeo_breakdown: ScoreBreakdownItem[]
   geo_breakdown: ScoreBreakdownItem[]
   content_breakdown: ScoreBreakdownItem[]
   citation_breakdown: ScoreBreakdownItem[]
+  eeat_breakdown: ScoreBreakdownItem[]
   content_stats: ContentAnalysisResult['stats']
   citation_stats: CitationAnalysisResult['stats']
+  eeat_stats: EeatAnalysisResult['stats']
 }
 
 export function calculateScores(content: ScoreInput): ScoreResult {
@@ -141,18 +145,27 @@ export function calculateScores(content: ScoreInput): ScoreResult {
     geoSummary: content.geo_summary,
   })
 
+  // ===== E-E-A-T 점수 (작성자/발행일/수정일/발행처/깊이/출처) =====
+  const eeatAnalysis = analyzeEeat({
+    json_ld: content.json_ld,
+    body: content.body ?? null,
+  })
+
   return {
     seo_score: seoScore,
     aeo_score: aeoScore,
     geo_score: geoScore,
     content_score: contentAnalysis.content_score,
     citation_score: citationAnalysis.citation_score,
+    eeat_score: eeatAnalysis.eeat_score,
     seo_breakdown: seoBreakdown,
     aeo_breakdown: aeoBreakdown,
     geo_breakdown: geoBreakdown,
     content_breakdown: contentAnalysis.content_breakdown,
     citation_breakdown: citationAnalysis.citation_breakdown,
+    eeat_breakdown: eeatAnalysis.eeat_breakdown,
     content_stats: contentAnalysis.stats,
     citation_stats: citationAnalysis.stats,
+    eeat_stats: eeatAnalysis.stats,
   }
 }
