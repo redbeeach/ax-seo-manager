@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase/client'
 const navItems = [
   { label: '대시보드', href: '/dashboard' },
   { label: '콘텐츠 목록', href: '/contents' },
+  { label: '이미지 최적화', href: '/tools/image' },
 ]
 
 export default function DashboardLayout({
