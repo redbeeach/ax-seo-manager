@@ -10,7 +10,6 @@ import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
 import ContentInsights from '@/components/ContentInsights'
 import CompareCard from '@/components/CompareCard'
-import SearchPreviewCard from '@/components/SearchPreviewCard'
 
 export async function generateMetadata({
   params,
@@ -82,6 +81,50 @@ export default async function ContentDetailPage({
 
   const keywords = analyzeKeywords(content.title, content.body)
 
+  // 최근 Live 분석 결과 조회
+  const { data: liveAnalysis } = await supabaseAdmin
+    .from('content_live_analyses')
+    .select('*')
+    .eq('content_id', id)
+    .single()
+
+  // 점수 히스토리 조회 (최근 14개)
+  const { data: scoreHistory } = await supabaseAdmin
+    .from('content_score_history')
+    .select('*')
+    .eq('content_id', id)
+    .order('recorded_at', { ascending: true })
+    .limit(14)
+
+  // 오늘 히스토리 없으면 자동 저장
+  const today = new Date().toISOString().slice(0, 10)
+  const hasToday = scoreHistory?.some(
+    (h) => h.recorded_date === today
+  )
+  if (!hasToday) {
+    const overallScore = Math.round(
+      (scores.seo_score + scores.aeo_score + scores.geo_score +
+        scores.content_score + scores.citation_score +
+        scores.eeat_score + scores.readability_score) / 7
+    )
+    await supabaseAdmin.from('content_score_history').upsert(
+      {
+        content_id: id,
+        recorded_at: new Date().toISOString(),
+        recorded_date: today,
+        overall_score: overallScore,
+        seo_score: scores.seo_score,
+        aeo_score: scores.aeo_score,
+        geo_score: scores.geo_score,
+        content_score: scores.content_score,
+        citation_score: scores.citation_score,
+        eeat_score: scores.eeat_score,
+        readability_score: scores.readability_score,
+      },
+      { onConflict: 'content_id,recorded_date' }
+    ).select()
+  }
+
   return (
     <>
       {content.json_ld && (
@@ -152,6 +195,8 @@ export default async function ContentDetailPage({
           readability={{ score: scores.readability_score, breakdown: scores.readability_breakdown }}
           showBreakdown={!!content.seo_title}
           keywords={keywords}
+          initialLiveData={liveAnalysis ?? null}
+          scoreHistory={scoreHistory ?? []}
         />
 
         <CompareCard
@@ -160,15 +205,6 @@ export default async function ContentDetailPage({
             citation_score: scores.citation_score,
             readability_score: scores.readability_score,
           }}
-        />
-
-        <SearchPreviewCard
-          seoTitle={content.seo_title}
-          metaDescription={content.meta_description}
-          geoSummary={content.geo_summary}
-          aeAnswer={content.ae_answer}
-          pageTitle={content.title}
-          liveUrl={buildLiveUrl(content) ?? null}
         />
 
         <div className="mb-7">

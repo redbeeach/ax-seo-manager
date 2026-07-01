@@ -44,6 +44,7 @@ interface ScoreDashboardProps {
   showBreakdown: boolean
   keywords: KeywordData
   onCrawlResult?: (result: { title: string | null; body: string; url: string } | null) => void
+  initialCrawlResult?: CrawlApiResult | null
 }
 
 function tierFill(ratio: number) {
@@ -77,15 +78,19 @@ export default function ScoreDashboard({
   showBreakdown,
   keywords,
   onCrawlResult,
+  initialCrawlResult,
 }: ScoreDashboardProps) {
   const [crawlLoading, setCrawlLoading] = useState(false)
   const [crawlError, setCrawlError] = useState<string | null>(null)
-  const [crawlResult, setCrawlResult] = useState<CrawlApiResult | null>(null)
+  const [crawlResult, setCrawlResult] = useState<CrawlApiResult | null>(initialCrawlResult ?? null)
+  // DB/Live 토글: initialCrawlResult 있으면 처음부터 Live 기준으로
+  const [showLive, setShowLive] = useState(!!initialCrawlResult)
 
-  // 크롤링 결과가 있으면 그걸 우선 사용, 없으면 DB 기준 점수 사용
-  const content: ScoreGroup = crawlResult
-    ? { score: crawlResult.content_score, breakdown: crawlResult.content_breakdown }
-    : dbContent
+  // 토글에 따라 Content 점수 결정
+  const content: ScoreGroup =
+    showLive && crawlResult
+      ? { score: crawlResult.content_score, breakdown: crawlResult.content_breakdown }
+      : dbContent
 
   const handleCrawl = async () => {
     setCrawlLoading(true)
@@ -99,6 +104,7 @@ export default function ScoreDashboard({
       }
 
       setCrawlResult(data)
+      setShowLive(true)
       onCrawlResult?.({ title: data.title, body: data.body, url: data.url })
     } catch (err) {
       setCrawlError(err instanceof Error ? err.message : '알 수 없는 오류')
@@ -221,12 +227,12 @@ export default function ScoreDashboard({
                 <p className="text-[12px] font-medium uppercase tracking-wide text-ink-hint">
                   {group.label}
                 </p>
-                {isContentCard && crawlResult && (
+                {isContentCard && showLive && crawlResult && (
                   <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-accent">
-                    실시간
+                    🟢 Live
                   </span>
                 )}
-                {isContentCard && !crawlResult && (
+                {isContentCard && (!showLive || !crawlResult) && (
                   <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-ink-hint">
                     DB 기준
                   </span>
@@ -255,32 +261,58 @@ export default function ScoreDashboard({
         })}
       </div>
 
-      {/* 실제 페이지 크롤링 트리거 */}
+      {/* DB / Live 토글 + 크롤링 트리거 */}
       <div className="mb-5 flex items-center justify-between rounded-lg bg-surface-muted px-4 py-2.5">
-        <p className="text-[12px] text-ink-hint">
-          {crawlResult ? (
-            <>
-              <a
-                href={crawlResult.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-accent hover:underline"
+        <div className="flex items-center gap-3">
+          {/* 토글 */}
+          {crawlResult && (
+            <div className="flex items-center rounded-lg border border-line bg-surface p-0.5">
+              <button
+                onClick={() => setShowLive(false)}
+                className={`rounded px-2.5 py-1 text-[11px] font-medium transition-all ${
+                  !showLive ? 'bg-accent text-white' : 'text-ink-hint hover:text-ink'
+                }`}
               >
-                {crawlResult.url} ↗
-              </a>
-              {' · '}
-              {new Date(crawlResult.crawled_at).toLocaleString('ko-KR')} 기준 실제 페이지 검사 결과로 Content 점수가 갱신됨
-            </>
-          ) : (
-            '아직 DB에 저장된 데이터로만 검사된 상태입니다. 실제 배포된 페이지를 직접 가져와서 검사하려면 크롤링을 실행하세요.'
+                DB 기준
+              </button>
+              <button
+                onClick={() => setShowLive(true)}
+                className={`rounded px-2.5 py-1 text-[11px] font-medium transition-all ${
+                  showLive ? 'bg-accent text-white' : 'text-ink-hint hover:text-ink'
+                }`}
+              >
+                🟢 Live 기준
+              </button>
+            </div>
           )}
-        </p>
+          <p className="text-[12px] text-ink-hint">
+            {crawlResult ? (
+              <>
+                <a
+                  href={crawlResult.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent hover:underline"
+                >
+                  {crawlResult.url} ↗
+                </a>
+                {' · '}
+                {new Date(crawlResult.crawled_at).toLocaleString('ko-KR', {
+                  month: 'numeric', day: 'numeric',
+                  hour: '2-digit', minute: '2-digit',
+                })} 분석
+              </>
+            ) : (
+              '아직 DB에 저장된 데이터로만 검사된 상태입니다.'
+            )}
+          </p>
+        </div>
         <button
           onClick={handleCrawl}
           disabled={crawlLoading}
           className="h-8 shrink-0 rounded bg-accent px-3 text-xs font-bold text-white hover:bg-accent-hover disabled:opacity-50"
         >
-          {crawlLoading ? '크롤링 중...' : crawlResult ? '다시 크롤링' : '🌐 실제 페이지 크롤링'}
+          {crawlLoading ? '크롤링 중...' : '🔄 실제 페이지 크롤링'}
         </button>
       </div>
 

@@ -71,6 +71,21 @@ export async function POST(
   const bodyInner = extractBodyInner(html)
   const analysis = analyzeContent(bodyInner, liveTitle)
 
+  // Live 분석 결과를 DB에 upsert (content_id당 최신 1개 유지)
+  await supabaseAdmin
+    .from('content_live_analyses')
+    .upsert(
+      {
+        content_id: id,
+        url: liveUrl,
+        crawled_at: new Date().toISOString(),
+        content_score: analysis.content_score,
+        content_breakdown: analysis.content_breakdown,
+        content_stats: analysis.stats,
+      },
+      { onConflict: 'content_id' }
+    )
+
   return NextResponse.json({
     url: liveUrl,
     crawled_at: new Date().toISOString(),
