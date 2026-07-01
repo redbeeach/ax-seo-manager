@@ -135,15 +135,27 @@ export default function ScoreDashboard({
   const overallScore = avgCurrent
 
   function getGrade(score: number) {
-    if (score >= 90) return { grade: 'A+', color: '#22c55e' }
-    if (score >= 80) return { grade: 'A',  color: '#22c55e' }
-    if (score >= 70) return { grade: 'B',  color: '#eab308' }
-    if (score >= 60) return { grade: 'C',  color: '#f97316' }
-    if (score >= 50) return { grade: 'D',  color: '#ef4444' }
-    return { grade: 'F', color: '#b91c1c' }
+    if (score >= 90) return { grade: 'A+', color: '#22c55e', desc: '최우수 — AI 검색 최적화가 잘 되어 있습니다.' }
+    if (score >= 80) return { grade: 'A',  color: '#22c55e', desc: '우수 — 일부 항목만 보완하면 최상위권입니다.' }
+    if (score >= 70) return { grade: 'B',  color: '#eab308', desc: '양호 — 핵심 개선 항목을 수정하면 크게 올라갑니다.' }
+    if (score >= 60) return { grade: 'C',  color: '#f97316', desc: '보통 — AI 검색 노출을 위해 개선이 필요합니다.' }
+    if (score >= 50) return { grade: 'D',  color: '#ef4444', desc: '미흡 — 여러 핵심 항목이 누락되어 있습니다.' }
+    return { grade: 'F', color: '#b91c1c', desc: '불량 — 기본 SEO 요소부터 점검이 필요합니다.' }
   }
 
-  const { grade, color: gradeColor } = getGrade(overallScore)
+  // 가장 낮은 카테고리 2개 자동 감지해서 설명에 포함
+  const weakCards = [...scoreCards]
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 2)
+    .filter((c) => c.score < 70)
+    .map((c) => c.label)
+
+  const { grade, color: gradeColor, desc: gradeDesc } = getGrade(overallScore)
+
+  const weakHint =
+    weakCards.length > 0
+      ? ` 특히 ${weakCards.join(', ')} 개선을 우선 추천합니다.`
+      : ''
 
   return (
     <div className="mb-8 border-t border-line pt-6">
@@ -163,6 +175,9 @@ export default function ScoreDashboard({
               {grade}
             </span>
           </div>
+          <p className="mt-1 text-[12px] text-ink-secondary">
+            {gradeDesc}{weakHint}
+          </p>
         </div>
         <div className="flex-1">
           <div className="mb-1.5 flex items-center justify-between text-[12px] text-ink-hint">
@@ -176,13 +191,20 @@ export default function ScoreDashboard({
               style={{ width: `${overallScore}%`, backgroundColor: gradeColor }}
             />
           </div>
-          <p className="mt-2 text-[12px] text-ink-hint">
-            모든 항목 수정 시 예상{' '}
-            <span className="font-bold" style={{ color: gradeColor }}>
-              {avgProjected}점 ({getGrade(avgProjected).grade})
-            </span>
-            으로 상승
-          </p>
+          <div className="mt-2 flex items-center justify-between">
+            <p className="text-[12px] text-ink-hint">
+              모든 항목 수정 시 예상{' '}
+              <span className="font-bold" style={{ color: gradeColor }}>
+                {avgProjected}점 ({getGrade(avgProjected).grade})
+              </span>
+              으로 상승
+            </p>
+            {crawlResult && (
+              <span className="rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-medium text-score-good">
+                ✅ Live Analysis 완료 ({new Date(crawlResult.crawled_at).toLocaleString('ko-KR', { hour: '2-digit', minute: '2-digit' })})
+              </span>
+            )}
+          </div>
         </div>
       </div>
       {/* 점수 카드 5단 */}

@@ -10,6 +10,7 @@ import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
 import ContentInsights from '@/components/ContentInsights'
 import CompareCard from '@/components/CompareCard'
+import SearchPreviewCard from '@/components/SearchPreviewCard'
 
 export async function generateMetadata({
   params,
@@ -159,6 +160,15 @@ export default async function ContentDetailPage({
             citation_score: scores.citation_score,
             readability_score: scores.readability_score,
           }}
+        />
+
+        <SearchPreviewCard
+          seoTitle={content.seo_title}
+          metaDescription={content.meta_description}
+          geoSummary={content.geo_summary}
+          aeAnswer={content.ae_answer}
+          pageTitle={content.title}
+          liveUrl={buildLiveUrl(content) ?? null}
         />
 
         <div className="mb-7">

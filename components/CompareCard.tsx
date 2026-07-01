@@ -213,6 +213,7 @@ export default function CompareCard({ myScores, myLabel = '내 페이지' }: Com
                   </th>
                 ))}
                 <th className="pb-2 text-left font-medium text-ink-hint">평균</th>
+                <th className="pb-2 text-left font-medium text-ink-hint">Gap</th>
               </tr>
             </thead>
             <tbody>
@@ -220,6 +221,11 @@ export default function CompareCard({ myScores, myLabel = '내 페이지' }: Com
                 const avg = Math.round(
                   (row.content_score + row.citation_score + row.readability_score) / 3
                 )
+                const myAvg = Math.round(
+                  (myScores.content_score + myScores.citation_score + myScores.readability_score) / 3
+                )
+                const avgGap = row.isMe ? null : avg - myAvg
+
                 return (
                   <tr
                     key={i}
@@ -246,20 +252,37 @@ export default function CompareCard({ myScores, myLabel = '내 페이지' }: Com
                     {SCORE_LABELS.map((s) => {
                       const score = row[s.key]
                       const myScore = myScores[s.key]
-                      const diff = score - myScore
+                      const diff = row.isMe ? null : score - myScore
                       return (
                         <td key={s.key} className="py-2.5 pr-6">
                           <ScoreBar score={score} />
-                          {!row.isMe && !row.error && (
-                            <p className={`mt-0.5 text-[11px] font-medium ${diff > 0 ? 'text-score-bad' : 'text-score-good'}`}>
-                              {diff > 0 ? `내 페이지보다 +${diff}` : diff < 0 ? `내 페이지보다 ${diff}` : '동점'}
+                          {diff !== null && !row.error && (
+                            <p className={`mt-0.5 text-[11px] font-bold ${diff > 0 ? 'text-score-bad' : diff < 0 ? 'text-score-good' : 'text-ink-hint'}`}>
+                              {diff > 0 ? `▲ +${diff}` : diff < 0 ? `▼ ${diff}` : '='}
                             </p>
                           )}
                         </td>
                       )
                     })}
-                    <td className="py-2.5">
+                    <td className="py-2.5 pr-4">
                       <span className={`text-[14px] font-bold ${tierText(avg / 100)}`}>{avg}</span>
+                    </td>
+                    <td className="py-2.5">
+                      {avgGap !== null && !row.error ? (
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${
+                            avgGap > 0
+                              ? 'bg-red-50 text-score-bad'
+                              : avgGap < 0
+                              ? 'bg-green-50 text-score-good'
+                              : 'bg-surface-muted text-ink-hint'
+                          }`}
+                        >
+                          {avgGap > 0 ? `+${avgGap}` : avgGap < 0 ? `${avgGap}` : '동점'}
+                        </span>
+                      ) : row.isMe ? (
+                        <span className="text-[12px] text-ink-hint">기준</span>
+                      ) : null}
                     </td>
                   </tr>
                 )

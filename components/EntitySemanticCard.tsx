@@ -134,14 +134,21 @@ export default function EntitySemanticCard({
             <p className="mb-1 text-[12px] font-medium text-ink-hint">핵심 주제</p>
             <p className="mb-3 text-[15px] font-bold text-ink">{result.topic || '판단 불가'}</p>
 
-            <p className="mb-2 text-[12px] font-medium text-ink-hint">추출된 Entity</p>
+            <p className="mb-2 text-[12px] font-medium text-ink-hint">
+              추출된 Entity
+              {result.entities.length > 0 && (
+                <span className="ml-1.5 rounded-full bg-surface-muted px-1.5 py-0.5 text-[11px] font-bold text-ink">
+                  {result.entities.length}개
+                </span>
+              )}
+            </p>
             {result.entities.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
-                {result.entities.map((e,i) => {
+                {result.entities.map((e) => {
                   const meta = ENTITY_META[e.type] ?? ENTITY_META.Other
                   return (
                     <span
-                      key={`${e.name}-${i}`}
+                      key={e.name}
                       className="flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[12px] font-medium text-ink"
                       style={{ backgroundColor: meta.bg }}
                       title={meta.label}
