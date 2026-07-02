@@ -30,15 +30,20 @@ const TIPS: Record<string, string> = {
 }
 
 export default async function DashboardPage() {
-  const { data: contents } = await supabaseAdmin
-    .from('contents')
-    .select('*')
+  const [{ data: contents }, { data: liveAnalyses }] = await Promise.all([
+    supabaseAdmin.from('contents').select('*'),
+    supabaseAdmin.from('content_live_analyses').select('content_id, content_score'),
+  ])
+
+  const liveMap = Object.fromEntries(
+    (liveAnalyses ?? []).map((l) => [l.content_id, l.content_score as number])
+  )
 
   const total = contents?.length ?? 0
 
   // 전체 콘텐츠 calculateScores 실행
-  const allScores = (contents ?? []).map((c) =>
-    calculateScores({
+  const allScores = (contents ?? []).map((c) => {
+    const scores = calculateScores({
       title: c.title,
       seo_title: c.seo_title,
       meta_description: c.meta_description,
@@ -56,7 +61,9 @@ export default async function DashboardPage() {
       gb5_bo_table: c.gb5_bo_table,
       gb5_wr_id: c.gb5_wr_id,
     })
-  )
+    // live content 점수 있으면 교체
+    return { ...scores, content_score: liveMap[c.id] ?? scores.content_score }
+  })
 
   const avgScore = (key: keyof typeof allScores[0]) => {
     if (!total) return 0

@@ -19,20 +19,16 @@ function tierText(score: number) {
   return 'text-score-bad'
 }
 
-function ScorePill({ label, score }: { label: string; score: number }) {
-  return (
-    <span className="flex items-center gap-1 text-[12px]">
-      <span className="text-ink-hint">{label}</span>
-      <span className={`font-bold tabular-nums ${tierText(score)}`}>{score}</span>
-    </span>
-  )
-}
-
 export default async function ContentsListPage() {
-  const { data: contents, error } = await supabaseAdmin
-    .from('contents')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const [{ data: contents, error }, { data: liveAnalyses }] = await Promise.all([
+    supabaseAdmin.from('contents').select('*').order('created_at', { ascending: false }),
+    supabaseAdmin.from('content_live_analyses').select('content_id, content_score'),
+  ])
+
+  // content_id → live content_score 맵
+  const liveMap = Object.fromEntries(
+    (liveAnalyses ?? []).map((l) => [l.content_id, l.content_score as number])
+  )
 
   return (
     <div className="mx-auto w-full max-w-[1200px] bg-surface px-8 py-10">
@@ -41,23 +37,15 @@ export default async function ContentsListPage() {
           <p className="mb-2.5 text-sm font-medium text-accent">AX SEO Manager</p>
           <h1 className="text-[32px] font-bold tracking-tight text-ink">콘텐츠 목록</h1>
         </div>
-        <Link
-          href="/contents/new"
-          className="flex h-11 items-center rounded bg-accent px-6 text-sm font-bold text-white hover:bg-accent-hover"
-        >
+        <Link href="/contents/new" className="flex h-11 items-center rounded bg-accent px-6 text-sm font-bold text-white hover:bg-accent-hover">
           + 새 글
         </Link>
       </div>
 
       <div className="mb-6 border-t border-line" />
 
-      {error && (
-        <p className="mt-4 text-sm font-medium text-score-bad">
-          목록을 불러오지 못했습니다.
-        </p>
-      )}
+      {error && <p className="mt-4 text-sm font-medium text-score-bad">목록을 불러오지 못했습니다.</p>}
 
-      {/* 헤더 행 */}
       {contents && contents.length > 0 && (
         <div className="mb-2 grid grid-cols-[1fr_80px_repeat(7,52px)] items-center gap-3 px-4 text-[11px] font-bold text-ink-hint">
           <span>제목</span>
@@ -93,39 +81,50 @@ export default async function ContentsListPage() {
             gb5_wr_id: c.gb5_wr_id,
           })
 
+          // 크롤링된 live Content 점수가 있으면 교체
+          const contentScore = liveMap[c.id] ?? scores.content_score
+          const hasLive = c.id in liveMap
+
           const overall = Math.round(
             (scores.seo_score + scores.aeo_score + scores.geo_score +
-              scores.content_score + scores.citation_score +
+              contentScore + scores.citation_score +
               scores.eeat_score + scores.readability_score) / 7
           )
           const { grade, color: gradeColor } = getGrade(overall)
 
+          const scoreColumns = [
+            scores.seo_score,
+            scores.aeo_score,
+            scores.geo_score,
+            contentScore,
+            scores.citation_score,
+            scores.eeat_score,
+            scores.readability_score,
+          ]
+
           return (
-            <li key={c.id} className="grid grid-cols-[1fr_80px_repeat(7,52px)] items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 hover:border-accent transition-all">
-              {/* 제목 + 링크 */}
+            <li key={c.id} className="grid grid-cols-[1fr_80px_repeat(7,52px)] items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 transition-all hover:border-accent">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <Link
-                    href={`/contents/${c.id}`}
-                    className="truncate text-[15px] font-bold text-ink hover:text-accent"
-                  >
+                  <Link href={`/contents/${c.id}`} className="truncate text-[15px] font-bold text-ink hover:text-accent">
                     {c.title}
                   </Link>
+                  {hasLive && (
+                    <span className="shrink-0 rounded-full bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-score-good">
+                      🟢 Live
+                    </span>
+                  )}
                   {c.gb5_bo_table && c.gb5_wr_id && (
-                    <a
-                      href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${c.gb5_bo_table}&wr_id=${c.gb5_wr_id}`}
+                    <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${c.gb5_bo_table}&wr_id=${c.gb5_wr_id}`}
                       target="_blank" rel="noopener noreferrer"
-                      className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent"
-                    >
+                      className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent">
                       GB5 ↗
                     </a>
                   )}
                   {c.page_slug && (
-                    <a
-                      href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${c.page_slug}.php`}
+                    <a href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${c.page_slug}.php`}
                       target="_blank" rel="noopener noreferrer"
-                      className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent"
-                    >
+                      className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent">
                       {c.page_slug} ↗
                     </a>
                   )}
@@ -135,26 +134,12 @@ export default async function ContentsListPage() {
                 </p>
               </div>
 
-              {/* Overall + Grade */}
               <div className="flex flex-col items-center">
-                <span className="text-[18px] font-black tabular-nums leading-none" style={{ color: gradeColor }}>
-                  {overall}
-                </span>
-                <span className="mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: gradeColor }}>
-                  {grade}
-                </span>
+                <span className="text-[18px] font-black tabular-nums leading-none" style={{ color: gradeColor }}>{overall}</span>
+                <span className="mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-black text-white" style={{ backgroundColor: gradeColor }}>{grade}</span>
               </div>
 
-              {/* 개별 점수들 */}
-              {[
-                scores.seo_score,
-                scores.aeo_score,
-                scores.geo_score,
-                scores.content_score,
-                scores.citation_score,
-                scores.eeat_score,
-                scores.readability_score,
-              ].map((score, i) => (
+              {scoreColumns.map((score, i) => (
                 <div key={i} className="flex flex-col items-center">
                   <span className={`text-[14px] font-bold tabular-nums ${tierText(score)}`}>{score}</span>
                 </div>
@@ -165,9 +150,7 @@ export default async function ContentsListPage() {
       </ul>
 
       {contents?.length === 0 && (
-        <p className="mt-16 text-center text-sm text-ink-hint">
-          아직 작성된 콘텐츠가 없습니다.
-        </p>
+        <p className="mt-16 text-center text-sm text-ink-hint">아직 작성된 콘텐츠가 없습니다.</p>
       )}
     </div>
   )
