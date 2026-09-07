@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     try {
       const live = await fetchLivePageContent({ title, page_slug, gb5_bo_table, gb5_wr_id })
       title = live.title
-      content = live.body
+      content = live.text
     } catch (err) {
       return NextResponse.json(
         { error: err instanceof Error ? err.message : '실제 페이지를 가져오지 못했습니다.' },

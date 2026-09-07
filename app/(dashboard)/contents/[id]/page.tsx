@@ -6,6 +6,7 @@ import DeleteButton from '@/components/DeleteButton'
 import AiOptimizeButton from '@/components/AiOptimizeButton'
 import { calculateScores } from '@/lib/score/calculate'
 import { buildLiveUrl } from '@/lib/gb5/url'
+import { htmlToText } from '@/lib/gb5/crawl'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
 import ContentInsights from '@/components/ContentInsights'
@@ -60,6 +61,8 @@ export default async function ContentDetailPage({
     notFound()
   }
 
+  const displayBody = htmlToText(content.body ?? '')
+
   const scores = calculateScores({
     title: content.title,
     seo_title: content.seo_title,
@@ -70,7 +73,7 @@ export default async function ContentDetailPage({
     ae_answer: content.ae_answer,
     geo_summary: content.geo_summary,
     json_ld: content.json_ld,
-    body: content.body,
+    body: displayBody,
     canonical_url: content.canonical_url,
     robots_index: content.robots_index,
     robots_follow: content.robots_follow,
@@ -79,7 +82,7 @@ export default async function ContentDetailPage({
     gb5_wr_id: content.gb5_wr_id,
   })
 
-  const keywords = analyzeKeywords(content.title, content.body)
+  const keywords = analyzeKeywords(content.title, displayBody)
 
   // 최근 Live 분석 결과 조회
   const { data: liveAnalysis } = await supabaseAdmin
@@ -216,11 +219,11 @@ export default async function ContentDetailPage({
         />
 
         <div className="mb-7">
-          <AiOptimizeButton id={id} title={content.title} body={content.body} />
+          <AiOptimizeButton id={id} title={content.title} body={displayBody} />
         </div>
 
         <div className="mb-8 whitespace-pre-wrap border-t border-line pt-6 text-[15px] leading-relaxed text-ink">
-          {content.body}
+          {displayBody}
         </div>
 
         {/* AI 최적화 결과 */}

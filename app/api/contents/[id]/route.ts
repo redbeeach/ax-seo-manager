@@ -60,7 +60,7 @@ export async function PATCH(
         gb5_wr_id,
       })
       updateBody.title = live.title
-      updateBody.body = live.body
+      updateBody.body = live.text
     } catch (err) {
       return NextResponse.json(
         { error: err instanceof Error ? err.message : '실제 페이지를 가져오지 못했습니다.' },

@@ -45,38 +45,40 @@ export default function AiOptimizeButton({
 
   return (
     <div>
-      <div className="mb-3 inline-flex rounded border border-line p-1">
-        <button
-          type="button"
-          onClick={() => setSource('saved')}
-          className={`h-8 rounded px-3 text-[12px] font-medium ${
-            source === 'saved'
-              ? 'bg-accent text-white'
-              : 'text-ink-secondary hover:bg-surface-muted'
-          }`}
-        >
-          저장된 내용 기준
-        </button>
-        <button
-          type="button"
-          onClick={() => setSource('live')}
-          className={`h-8 rounded px-3 text-[12px] font-medium ${
-            source === 'live'
-              ? 'bg-accent text-white'
-              : 'text-ink-secondary hover:bg-surface-muted'
-          }`}
-        >
-          실제 페이지 기준
-        </button>
-      </div>
+      <fieldset className="mb-3">
+        <legend className="mb-2 text-[12px] font-medium text-ink-hint">최적화 기준</legend>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm text-ink-secondary">
+            <input
+              type="radio"
+              name="optimizeSource"
+              value="saved"
+              checked={source === 'saved'}
+              onChange={() => setSource('saved')}
+              className="h-4 w-4 accent-accent"
+            />
+            저장된 내용
+          </label>
+          <label className="flex items-center gap-2 text-sm text-ink-secondary">
+            <input
+              type="radio"
+              name="optimizeSource"
+              value="live"
+              checked={source === 'live'}
+              onChange={() => setSource('live')}
+              className="h-4 w-4 accent-accent"
+            />
+            실제 페이지
+          </label>
+        </div>
+      </fieldset>
 
       <button
         onClick={handleOptimize}
         disabled={loading}
-        className="flex h-10 items-center gap-1.5 rounded bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
+        className="flex h-10 items-center rounded bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
       >
-        <span aria-hidden>AI</span>
-        {loading ? 'AI 분석 중...' : 'AI 최적화 실행'}
+        {loading ? '분석 중...' : 'AI 최적화 실행'}
       </button>
 
       {error && (

@@ -7,7 +7,7 @@ type CrawlSource = {
   gb5_wr_id?: string | number | null
 }
 
-function stripTags(html: string): string {
+export function htmlToText(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -22,7 +22,7 @@ export function extractTitle(html: string): string | null {
   if (ogTitle?.[1]) return ogTitle[1].trim()
 
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)
-  return title ? stripTags(title[1]).trim() : null
+  return title ? htmlToText(title[1]).trim() : null
 }
 
 export function extractBodyInner(html: string): string {
@@ -64,6 +64,6 @@ export async function fetchLivePageContent(source: CrawlSource) {
     url,
     title,
     body,
-    text: stripTags(body),
+    text: htmlToText(body),
   }
 }

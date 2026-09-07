@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
 
       const live = await fetchLivePageContent({ title: sourceTitle, ...existing })
       sourceTitle = live.title
-      sourceBody = live.body
+      sourceBody = live.text
       sourceUrl = live.url
       pageUrl = live.url
     }
