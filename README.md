@@ -141,11 +141,7 @@ npm install
 
 `.env.local` 생성:
 
-NEXT_PUBLIC_SUPABASE_URL=
-
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-
-SUPABASE_SERVICE_ROLE_KEY=
+DATABASE_URL=
 
 OPENAI_API_KEY=
 
@@ -164,4 +160,3 @@ npm run dev
 ## 🔗 Live Demo
 
 - [https://ax-seo-manager.vercel.app](https://ax-seo-manager.vercel.app)
-
