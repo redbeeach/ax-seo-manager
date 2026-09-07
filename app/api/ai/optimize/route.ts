@@ -172,24 +172,29 @@ export async function POST(request: NextRequest) {
     })
 
     if (id) {
+      const contentUpdate: Record<string, any> = {
+        seo_title: aiResult.seo_title,
+        meta_description: aiResult.meta_description,
+        og_title: aiResult.og_title,
+        og_description: aiResult.og_description,
+        faq_json: aiResult.faq,
+        ae_answer: aiResult.ae_answer,
+        geo_summary: aiResult.geo_summary,
+        json_ld,
+        seo_score: scores.seo_score,
+        aeo_score: scores.aeo_score,
+        geo_score: scores.geo_score,
+        updated_at: modifiedAt,
+      }
+
+      if (source !== 'live') {
+        contentUpdate.title = sourceTitle
+        contentUpdate.body = sourceBody
+      }
+
       const { error } = await supabaseAdmin
         .from('contents')
-        .update({
-          title: sourceTitle,
-          body: sourceBody,
-          seo_title: aiResult.seo_title,
-          meta_description: aiResult.meta_description,
-          og_title: aiResult.og_title,
-          og_description: aiResult.og_description,
-          faq_json: aiResult.faq,
-          ae_answer: aiResult.ae_answer,
-          geo_summary: aiResult.geo_summary,
-          json_ld,
-          seo_score: scores.seo_score,
-          aeo_score: scores.aeo_score,
-          geo_score: scores.geo_score,
-          updated_at: modifiedAt,
-        })
+        .update(contentUpdate)
         .eq('id', id)
 
       if (error) throw error

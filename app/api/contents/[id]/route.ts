@@ -53,14 +53,14 @@ export async function PATCH(
 
   if (import_from_live) {
     try {
-      const live = await fetchLivePageContent({
+      await fetchLivePageContent({
         title: typeof updateBody.title === 'string' ? updateBody.title : null,
         page_slug,
         gb5_bo_table,
         gb5_wr_id,
       })
-      updateBody.title = live.title
-      updateBody.body = live.text
+      delete updateBody.title
+      delete updateBody.body
     } catch (err) {
       return NextResponse.json(
         { error: err instanceof Error ? err.message : '실제 페이지를 가져오지 못했습니다.' },
@@ -69,7 +69,7 @@ export async function PATCH(
     }
   }
 
-  if (!updateBody.title || !updateBody.body) {
+  if (!import_from_live && (!updateBody.title || !updateBody.body)) {
     return NextResponse.json(
       { error: '제목과 본문을 입력하거나, 실제 페이지에서 가져오기를 선택해주세요.' },
       { status: 400 }
