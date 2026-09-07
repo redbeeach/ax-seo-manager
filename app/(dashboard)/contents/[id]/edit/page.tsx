@@ -1,86 +1,40 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
+import ContentForm from '@/components/ContentForm'
+
+type ContentData = {
+  title: string
+  body: string
+  gb5_bo_table?: string | null
+  gb5_wr_id?: string | null
+  page_slug?: string | null
+  canonical_url?: string | null
+  robots_index?: boolean | null
+  robots_follow?: boolean | null
+  seo_score?: number | null
+  aeo_score?: number | null
+  geo_score?: number | null
+}
 
 export default function EditContentPage() {
-  const router = useRouter()
   const params = useParams()
   const id = params.id as string
-
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [canonicalUrl, setCanonicalUrl] = useState('')
-  const [robotsIndex, setRobotsIndex] = useState(true)
-  const [robotsFollow, setRobotsFollow] = useState(true)
-  const [score, setScore] = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [content, setContent] = useState<ContentData | null>(null)
   const [fetching, setFetching] = useState(true)
-  const [error, setError] = useState('')
 
   useEffect(() => {
     const load = async () => {
       const res = await fetch(`/api/contents/${id}`)
       if (res.ok) {
-        const data = await res.json()
-        setTitle(data.title)
-        setBody(data.body)
-        setCanonicalUrl(data.canonical_url ?? '')
-        setRobotsIndex(data.robots_index !== false)
-        setRobotsFollow(data.robots_follow !== false)
-        // seo_score / aeo_score / geo_score 중 있는 거 평균 (없으면 null)
-        const scores = [data.seo_score, data.aeo_score, data.geo_score].filter(
-          (s) => typeof s === 'number'
-        )
-        if (scores.length > 0) {
-          setScore(Math.round(scores.reduce((a, b) => a + b, 0) / scores.length))
-        }
+        setContent(await res.json())
       }
       setFetching(false)
     }
+
     load()
   }, [id])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-
-    if (!title.trim() || !body.trim()) {
-      setError('제목과 본문을 입력해주세요.')
-      return
-    }
-    const trimmedCanonical = canonicalUrl.trim()
-    if (trimmedCanonical && !/^https?:\/\/.+/i.test(trimmedCanonical)) {
-      setError('Canonical URL은 http:// 또는 https:// 로 시작하는 전체 URL이어야 합니다. (예: https://example.com/page)')
-      return
-    }
-    setLoading(true)
-
-    try {
-      const res = await fetch(`/api/contents/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          body,
-          canonical_url: canonicalUrl.trim() || null,
-          robots_index: robotsIndex,
-          robots_follow: robotsFollow,
-        }),
-      })
-
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || '수정에 실패했습니다.')
-      }
-
-      router.push(`/contents/${id}`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '알 수 없는 오류')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   if (fetching) {
     return (
@@ -90,6 +44,20 @@ export default function EditContentPage() {
     )
   }
 
+  if (!content) {
+    return (
+      <div className="mx-auto max-w-3xl px-8 py-16 text-sm text-score-bad">
+        콘텐츠를 불러오지 못했습니다.
+      </div>
+    )
+  }
+
+  const scores = [content.seo_score, content.aeo_score, content.geo_score].filter(
+    (score): score is number => typeof score === 'number'
+  )
+  const score = scores.length > 0
+    ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length)
+    : null
   const scoreColor =
     score === null
       ? 'text-ink-secondary'
@@ -100,18 +68,17 @@ export default function EditContentPage() {
       : 'text-score-bad'
 
   return (
-    <div className="mx-auto max-w-3xl w-[1400px] bg-surface px-8 py-10">
-      {/* 헤더 */}
-      <div className="mb-5 flex items-end justify-between">
-        <div>
+    <div className="mx-auto max-w-3xl bg-surface px-8 py-10">
+      <div className="mb-5 flex items-end justify-between gap-6">
+        <div className="min-w-0">
           <p className="mb-2.5 text-sm font-medium text-accent">콘텐츠 / 수정</p>
-          <h1 className="text-[32px] font-bold tracking-tight text-ink">
-            {title || '제목 없음'}
+          <h1 className="truncate text-[32px] font-bold tracking-tight text-ink">
+            {content.title || '제목 없음'}
           </h1>
         </div>
         {score !== null && (
-          <div className="flex items-center gap-1.5 text-[13px] text-ink-hint">
-            <span className="text-sm font-medium text-ink-secondary">종합 점수</span>
+          <div className="shrink-0 text-right text-[13px] text-ink-hint">
+            <span className="block text-sm font-medium text-ink-secondary">종합 점수</span>
             <span className={`text-lg font-bold ${scoreColor}`}>{score}점</span>
           </div>
         )}
@@ -119,96 +86,7 @@ export default function EditContentPage() {
 
       <div className="mb-8 border-t border-line" />
 
-      <form onSubmit={handleSubmit}>
-        <p className="mb-4 text-right text-xs text-ink-hint">
-          * 은 필수 입력 항목입니다
-        </p>
-
-        <p className="mb-4 text-[17px] font-bold text-ink">콘텐츠 정보</p>
-
-        <div className="grid grid-cols-[120px_1fr] items-center gap-y-5 border-t border-line pt-5">
-          <label htmlFor="title" className="text-sm font-medium text-ink">
-            제목 <span className="text-accent">*</span>
-          </label>
-          <input
-            id="title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="h-10 rounded border border-line px-3 text-[15px] text-ink outline-none focus:border-accent"
-          />
-
-          <label
-            htmlFor="body"
-            className="self-start pt-2 text-sm font-medium text-ink"
-          >
-            본문 <span className="text-accent">*</span>
-          </label>
-          <textarea
-            id="body"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={12}
-            className="min-h-[200px] resize-y rounded border border-line p-3 text-[15px] leading-relaxed text-ink outline-none focus:border-accent"
-          />
-
-          <label htmlFor="canonicalUrl" className="text-sm font-medium text-ink">
-            Canonical URL
-          </label>
-          <input
-            id="canonicalUrl"
-            type="text"
-            value={canonicalUrl}
-            onChange={(e) => setCanonicalUrl(e.target.value)}
-            placeholder="비워두면 page_slug 기반으로 자동 생성됩니다"
-            className="h-10 rounded border border-line px-3 text-[15px] text-ink outline-none focus:border-accent"
-          />
-
-          <span className="text-sm font-medium text-ink">robots</span>
-          <div className="flex gap-5">
-            <label className="flex items-center gap-2 text-sm text-ink-secondary">
-              <input
-                type="checkbox"
-                checked={robotsIndex}
-                onChange={(e) => setRobotsIndex(e.target.checked)}
-                className="h-4 w-4 accent-accent"
-              />
-              검색엔진 색인 허용 (index)
-            </label>
-            <label className="flex items-center gap-2 text-sm text-ink-secondary">
-              <input
-                type="checkbox"
-                checked={robotsFollow}
-                onChange={(e) => setRobotsFollow(e.target.checked)}
-                className="h-4 w-4 accent-accent"
-              />
-              링크 추적 허용 (follow)
-            </label>
-          </div>
-        </div>
-
-        {error && (
-          <p className="mt-4 text-sm font-medium text-score-bad">{error}</p>
-        )}
-
-        {/* 액션 */}
-        <div className="mt-8 flex justify-end gap-2.5 border-t border-line pt-5">
-          <button
-            type="button"
-            onClick={() => router.push(`/contents/${id}`)}
-            className="h-11 rounded border border-line px-6 text-sm font-medium text-ink-secondary hover:bg-surface-muted"
-          >
-            취소
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-11 rounded bg-accent px-6 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
-          >
-            {loading ? '저장 중...' : '수정 완료'}
-          </button>
-        </div>
-      </form>
+      <ContentForm mode="edit" contentId={id} initialValues={content} />
     </div>
   )
 }

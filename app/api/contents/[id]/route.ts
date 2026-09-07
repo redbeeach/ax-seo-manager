@@ -29,6 +29,20 @@ export async function PATCH(
   const { id } = await params
   const body = await request.json()
 
+  if ((body.gb5_bo_table || body.gb5_wr_id) && body.page_slug) {
+    return NextResponse.json(
+      { error: 'GB5 게시글 연동과 고정 페이지 슬러그는 동시에 설정할 수 없습니다.' },
+      { status: 400 }
+    )
+  }
+
+  if ((body.gb5_bo_table && !body.gb5_wr_id) || (!body.gb5_bo_table && body.gb5_wr_id)) {
+    return NextResponse.json(
+      { error: 'GB5 게시판명과 게시글 번호는 함께 입력해주세요.' },
+      { status: 400 }
+    )
+  }
+
   const { data, error } = await supabaseAdmin
     .from('contents')
     .update({ ...body, updated_at: new Date().toISOString() })

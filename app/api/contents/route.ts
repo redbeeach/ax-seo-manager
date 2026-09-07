@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
-// 목록 조회
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from('contents')
@@ -15,14 +14,22 @@ export async function GET() {
   return NextResponse.json(data)
 }
 
-// 생성
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { title, body: content, gb5_bo_table, gb5_wr_id, page_slug } = body
+  const {
+    title,
+    body: content,
+    gb5_bo_table,
+    gb5_wr_id,
+    page_slug,
+    canonical_url,
+    robots_index,
+    robots_follow,
+  } = body
 
   if (!title || !content) {
     return NextResponse.json(
-      { error: 'title과 body는 필수입니다.' },
+      { error: '제목과 본문은 필수입니다.' },
       { status: 400 }
     )
   }
@@ -34,20 +41,36 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  if ((gb5_bo_table && !gb5_wr_id) || (!gb5_bo_table && gb5_wr_id)) {
+    return NextResponse.json(
+      { error: 'GB5 게시판명과 게시글 번호는 함께 입력해주세요.' },
+      { status: 400 }
+    )
+  }
+
   const { data, error } = await supabaseAdmin
     .from('contents')
-    .insert([{ title, body: content, gb5_bo_table, gb5_wr_id, page_slug }])
+    .insert([{
+      title,
+      body: content,
+      gb5_bo_table,
+      gb5_wr_id,
+      page_slug,
+      canonical_url,
+      robots_index,
+      robots_follow,
+    }])
     .select()
     .single()
 
   if (error) {
-    // page_slug unique 제약 위반 시 더 친절한 에러 메시지
     if (error.message.includes('page_slug')) {
       return NextResponse.json(
         { error: '이미 사용 중인 슬러그입니다. 다른 값을 입력해주세요.' },
         { status: 409 }
       )
     }
+
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
