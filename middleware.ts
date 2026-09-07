@@ -17,6 +17,10 @@ function isPublicPath(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  if (process.env.ENABLE_AUTH !== 'true') {
+    return NextResponse.next()
+  }
+
   if (isPublicPath(pathname)) {
     return NextResponse.next()
   }
