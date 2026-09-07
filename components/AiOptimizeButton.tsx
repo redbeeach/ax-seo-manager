@@ -3,21 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-interface FaqItem {
-  question: string
-  answer: string
-}
-
-interface OptimizeResult {
-  seo_title: string
-  meta_description: string
-  og_title: string
-  og_description: string
-  faq: FaqItem[]
-  ae_answer: string
-  geo_summary: string
-  json_ld: Record<string, unknown>
-}
+type OptimizeSource = 'saved' | 'live'
 
 export default function AiOptimizeButton({
   id,
@@ -29,6 +15,7 @@ export default function AiOptimizeButton({
   body: string
 }) {
   const router = useRouter()
+  const [source, setSource] = useState<OptimizeSource>('saved')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -40,7 +27,7 @@ export default function AiOptimizeButton({
       const res = await fetch('/api/ai/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, title, body }),
+        body: JSON.stringify({ id, title, body, source }),
       })
 
       if (!res.ok) {
@@ -50,7 +37,7 @@ export default function AiOptimizeButton({
 
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : '알 수 없는 오류')
+      setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
@@ -58,14 +45,40 @@ export default function AiOptimizeButton({
 
   return (
     <div>
+      <div className="mb-3 inline-flex rounded border border-line p-1">
+        <button
+          type="button"
+          onClick={() => setSource('saved')}
+          className={`h-8 rounded px-3 text-[12px] font-medium ${
+            source === 'saved'
+              ? 'bg-accent text-white'
+              : 'text-ink-secondary hover:bg-surface-muted'
+          }`}
+        >
+          저장된 내용 기준
+        </button>
+        <button
+          type="button"
+          onClick={() => setSource('live')}
+          className={`h-8 rounded px-3 text-[12px] font-medium ${
+            source === 'live'
+              ? 'bg-accent text-white'
+              : 'text-ink-secondary hover:bg-surface-muted'
+          }`}
+        >
+          실제 페이지 기준
+        </button>
+      </div>
+
       <button
         onClick={handleOptimize}
         disabled={loading}
         className="flex h-10 items-center gap-1.5 rounded bg-accent px-4 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-50"
       >
-        <span aria-hidden>✨</span>
-        {loading ? 'AI 분석 중... (몇 초 걸려요)' : 'AI 최적화 실행'}
+        <span aria-hidden>AI</span>
+        {loading ? 'AI 분석 중...' : 'AI 최적화 실행'}
       </button>
+
       {error && (
         <p className="mt-2 text-sm font-medium text-score-bad">{error}</p>
       )}

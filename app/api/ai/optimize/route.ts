@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { calculateScores } from '@/lib/score/calculate'
+import { fetchLivePageContent } from '@/lib/gb5/crawl'
 
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || 'AX SEO Manager'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com'
@@ -27,20 +28,20 @@ async function callOpenAI(title: string, body: string): Promise<AiResult> {
   }
 
   const systemPrompt = `당신은 SEO/AEO/GEO 최적화 전문가입니다.
-주어진 글의 제목과 본문을 분석해서 아래 JSON 형식으로만 답변하세요.
+주어진 페이지 제목과 본문을 분석해서 아래 JSON 형식으로만 답하세요.
 
 {
-  "seo_title": "60자 이내, 핵심 키워드를 포함한 검색엔진용 제목",
-  "meta_description": "155자 이내, 클릭을 유도하는 요약 설명",
-  "og_title": "소셜 공유용 제목 (제목과 비슷해도 됨)",
+  "seo_title": "검색엔진용 제목. 60자 이내. 핵심 키워드 포함",
+  "meta_description": "검색 결과에 노출될 요약 설명. 155자 이내",
+  "og_title": "소셜 공유용 제목",
   "og_description": "소셜 공유용 설명",
   "faq": [
-    { "question": "본문 내용 기반 질문 1", "answer": "본문 내용을 바탕으로 한 답변" },
-    { "question": "본문 내용 기반 질문 2", "answer": "본문 내용을 바탕으로 한 답변" },
-    { "question": "본문 내용 기반 질문 3", "answer": "본문 내용을 바탕으로 한 답변" }
+    { "question": "본문 기반 질문 1", "answer": "본문 기반 답변 1" },
+    { "question": "본문 기반 질문 2", "answer": "본문 기반 답변 2" },
+    { "question": "본문 기반 질문 3", "answer": "본문 기반 답변 3" }
   ],
-  "ae_answer": "음성/AI 검색 응답에 쓸 한 줄 핵심 답변 (50자 내외)",
-  "geo_summary": "ChatGPT/Perplexity 같은 생성형 AI가 인용하기 좋은 50자 이상의 핵심 요약문"
+  "ae_answer": "AI 검색 답변에 바로 쓰기 좋은 핵심 답변. 50자 이상",
+  "geo_summary": "생성형 AI가 인용하기 좋은 객관적 요약. 50자 이상"
 }`
 
   const userPrompt = `제목: ${title}\n\n본문:\n${body}`
@@ -72,56 +73,73 @@ async function callOpenAI(title: string, body: string): Promise<AiResult> {
     throw new Error('AI 응답에서 내용을 찾을 수 없습니다.')
   }
 
-  let parsed: AiResult
   try {
-    parsed = JSON.parse(content)
+    return JSON.parse(content) as AiResult
   } catch {
     throw new Error('AI 응답을 JSON으로 해석하지 못했습니다.')
   }
-
-  return parsed
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { id, title, body } = await request.json()
-
-    if (!title || !body) {
-      return NextResponse.json(
-        { error: 'title과 body는 필수입니다.' },
-        { status: 400 }
-      )
-    }
+    const { id, title, body, source } = await request.json()
+    let sourceTitle = typeof title === 'string' ? title : ''
+    let sourceBody = typeof body === 'string' ? body : ''
+    let sourceUrl: string | null = null
 
     let publishedAt = new Date().toISOString()
     let pageUrl = id ? `${SITE_URL}/contents/${id}` : SITE_URL
+    let existing: Record<string, any> | null = null
+
     if (id) {
-      const { data: existing } = await supabaseAdmin
+      const { data } = await supabaseAdmin
         .from('contents')
         .select('created_at, gb5_bo_table, gb5_wr_id, page_slug')
         .eq('id', id)
         .single()
+
+      existing = data
+
       if (existing?.created_at) {
-        // created_at이 타임존 없이 저장된 경우가 있어 ISO 8601(Z 포함)로 정규화
         publishedAt = new Date(existing.created_at).toISOString()
       }
-      // 그누보드 게시글 동기화 콘텐츠 -> 실제 게시글 주소
+
       if (existing?.gb5_bo_table && existing?.gb5_wr_id && GB5_URL) {
         pageUrl = `${GB5_URL}/bbs/board.php?bo_table=${existing.gb5_bo_table}&wr_id=${existing.gb5_wr_id}`
-      }
-      // 고정 페이지(슬러그 기반) 콘텐츠 -> 실제 sub 페이지 주소
-      else if (existing?.page_slug && GB5_URL) {
+      } else if (existing?.page_slug && GB5_URL) {
         pageUrl = `${GB5_URL}${GB5_SUBPAGE_PATH}/${existing.page_slug}.php`
       }
     }
-    const modifiedAt = new Date().toISOString()
 
-    const aiResult = await callOpenAI(title, body)
+    if (source === 'live') {
+      if (!id || !existing) {
+        return NextResponse.json(
+          { error: '실제 페이지 기준 최적화는 저장된 콘텐츠에서만 사용할 수 있습니다.' },
+          { status: 400 }
+        )
+      }
+
+      const live = await fetchLivePageContent({ title: sourceTitle, ...existing })
+      sourceTitle = live.title
+      sourceBody = live.body
+      sourceUrl = live.url
+      pageUrl = live.url
+    }
+
+    if (!sourceTitle || !sourceBody) {
+      return NextResponse.json(
+        { error: '최적화할 제목과 본문을 찾을 수 없습니다.' },
+        { status: 400 }
+      )
+    }
+
+    const modifiedAt = new Date().toISOString()
+    const aiResult = await callOpenAI(sourceTitle, sourceBody)
 
     const json_ld = {
       '@context': 'https://schema.org',
       '@type': 'Article',
-      headline: title,
+      headline: sourceTitle,
       description: aiResult.meta_description,
       datePublished: publishedAt,
       dateModified: modifiedAt,
@@ -141,6 +159,7 @@ export async function POST(request: NextRequest) {
     }
 
     const scores = calculateScores({
+      title: sourceTitle,
       seo_title: aiResult.seo_title,
       meta_description: aiResult.meta_description,
       og_title: aiResult.og_title,
@@ -149,12 +168,15 @@ export async function POST(request: NextRequest) {
       ae_answer: aiResult.ae_answer,
       geo_summary: aiResult.geo_summary,
       json_ld,
+      body: sourceBody,
     })
 
     if (id) {
       const { error } = await supabaseAdmin
         .from('contents')
         .update({
+          title: sourceTitle,
+          body: sourceBody,
           seo_title: aiResult.seo_title,
           meta_description: aiResult.meta_description,
           og_title: aiResult.og_title,
@@ -172,8 +194,6 @@ export async function POST(request: NextRequest) {
 
       if (error) throw error
 
-      // 최적화 결과를 버전 기록으로 별도 저장 (덮어쓰기 전 내용도 나중에 복원 가능하게)
-      // 버전 저장이 실패해도 메인 최적화 자체는 성공으로 처리 (부가 기능이라 핵심 흐름을 막지 않음)
       try {
         await supabaseAdmin.from('content_versions').insert({
           content_id: id,
@@ -194,11 +214,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ ...aiResult, json_ld, ...scores })
+    return NextResponse.json({ ...aiResult, json_ld, ...scores, source_url: sourceUrl })
   } catch (err) {
     console.error('[ai-optimize-error]', err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'AI 최적화 실패' },
+      { error: err instanceof Error ? err.message : 'AI 최적화에 실패했습니다.' },
       { status: 500 }
     )
   }

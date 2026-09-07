@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { fetchLivePageContent } from '@/lib/gb5/crawl'
 
 export async function GET() {
   const { data, error } = await supabaseAdmin
@@ -17,22 +18,17 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const body = await request.json()
   const {
-    title,
-    body: content,
     gb5_bo_table,
     gb5_wr_id,
     page_slug,
     canonical_url,
     robots_index,
     robots_follow,
+    import_from_live,
   } = body
 
-  if (!title || !content) {
-    return NextResponse.json(
-      { error: '제목과 본문은 필수입니다.' },
-      { status: 400 }
-    )
-  }
+  let title = typeof body.title === 'string' ? body.title.trim() : ''
+  let content = typeof body.body === 'string' ? body.body.trim() : ''
 
   if ((gb5_bo_table || gb5_wr_id) && page_slug) {
     return NextResponse.json(
@@ -44,6 +40,26 @@ export async function POST(request: NextRequest) {
   if ((gb5_bo_table && !gb5_wr_id) || (!gb5_bo_table && gb5_wr_id)) {
     return NextResponse.json(
       { error: 'GB5 게시판명과 게시글 번호는 함께 입력해주세요.' },
+      { status: 400 }
+    )
+  }
+
+  if (import_from_live) {
+    try {
+      const live = await fetchLivePageContent({ title, page_slug, gb5_bo_table, gb5_wr_id })
+      title = live.title
+      content = live.body
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : '실제 페이지를 가져오지 못했습니다.' },
+        { status: 502 }
+      )
+    }
+  }
+
+  if (!title || !content) {
+    return NextResponse.json(
+      { error: '제목과 본문을 입력하거나, 실제 페이지에서 가져오기를 선택해주세요.' },
       { status: 400 }
     )
   }

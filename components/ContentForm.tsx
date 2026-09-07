@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+type ContentSourceMode = 'manual' | 'live'
+
 type ContentFormValues = {
   title: string
   body: string
@@ -26,6 +28,7 @@ function normalizeSlug(value: string) {
 
 export default function ContentForm({ mode, contentId, initialValues }: ContentFormProps) {
   const router = useRouter()
+  const [sourceMode, setSourceMode] = useState<ContentSourceMode>('manual')
   const [title, setTitle] = useState(initialValues?.title ?? '')
   const [body, setBody] = useState(initialValues?.body ?? '')
   const [gb5BoTable, setGb5BoTable] = useState(initialValues?.gb5_bo_table ?? '')
@@ -38,6 +41,7 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
   const [error, setError] = useState('')
 
   const isEdit = mode === 'edit'
+  const useLivePage = sourceMode === 'live'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,9 +53,16 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
     const trimmedWrId = gb5WrId.trim()
     const trimmedPageSlug = normalizeSlug(pageSlug)
     const trimmedCanonical = canonicalUrl.trim()
+    const hasGb5Post = !!trimmedBoTable && !!trimmedWrId
+    const hasLiveSource = !!trimmedPageSlug || hasGb5Post
 
-    if (!trimmedTitle || !trimmedBody) {
-      setError('제목과 본문을 입력해주세요.')
+    if (!useLivePage && (!trimmedTitle || !trimmedBody)) {
+      setError('직접 입력 모드에서는 제목과 본문을 입력해주세요.')
+      return
+    }
+
+    if (useLivePage && !hasLiveSource) {
+      setError('실제 페이지 모드에서는 GB5 게시글 정보 또는 고정 페이지 슬러그가 필요합니다.')
       return
     }
 
@@ -85,6 +96,7 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
           canonical_url: trimmedCanonical || null,
           robots_index: robotsIndex,
           robots_follow: robotsFollow,
+          import_from_live: useLivePage,
         }),
       })
 
@@ -105,34 +117,73 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
 
   return (
     <form onSubmit={handleSubmit}>
-      <p className="mb-4 text-right text-xs text-ink-hint">
-        * 필수 입력 항목입니다
-      </p>
+      <div className="mb-7 border-t border-line pt-5">
+        <p className="mb-3 text-[17px] font-bold text-ink">작성 방식</p>
+        <div className="grid grid-cols-2 gap-3">
+          <label className={`rounded border px-4 py-3 ${
+            sourceMode === 'manual' ? 'border-accent bg-surface-muted' : 'border-line'
+          }`}>
+            <span className="flex items-center gap-2 text-sm font-medium text-ink">
+              <input
+                type="radio"
+                name="contentSourceMode"
+                value="manual"
+                checked={sourceMode === 'manual'}
+                onChange={() => setSourceMode('manual')}
+                className="h-4 w-4 accent-accent"
+              />
+              제목/본문 직접 입력
+            </span>
+            <span className="mt-1 block pl-6 text-[12px] text-ink-hint">
+              입력한 제목과 본문을 기준으로 SEO 메타태그와 JSON-LD를 생성합니다.
+            </span>
+          </label>
+
+          <label className={`rounded border px-4 py-3 ${
+            sourceMode === 'live' ? 'border-accent bg-surface-muted' : 'border-line'
+          }`}>
+            <span className="flex items-center gap-2 text-sm font-medium text-ink">
+              <input
+                type="radio"
+                name="contentSourceMode"
+                value="live"
+                checked={sourceMode === 'live'}
+                onChange={() => setSourceMode('live')}
+                className="h-4 w-4 accent-accent"
+              />
+              실제 페이지에서 가져오기
+            </span>
+            <span className="mt-1 block pl-6 text-[12px] text-ink-hint">
+              연결된 GB5 게시글 또는 고정 페이지를 읽어 제목/본문을 자동으로 채웁니다.
+            </span>
+          </label>
+        </div>
+      </div>
 
       <p className="mb-4 text-[17px] font-bold text-ink">콘텐츠 정보</p>
 
       <div className="grid grid-cols-[120px_1fr] items-center gap-y-5 border-t border-line pt-5">
         <label htmlFor="title" className="text-sm font-medium text-ink">
-          제목 <span className="text-accent">*</span>
+          제목 {!useLivePage && <span className="text-accent">*</span>}
         </label>
         <input
           id="title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="제목을 입력하세요"
+          placeholder={useLivePage ? '비워두면 실제 페이지 제목을 사용합니다' : '제목을 입력하세요'}
           className="h-10 rounded border border-line px-3 text-[15px] text-ink outline-none focus:border-accent"
         />
 
         <label htmlFor="body" className="self-start pt-2 text-sm font-medium text-ink">
-          본문 <span className="text-accent">*</span>
+          본문 {!useLivePage && <span className="text-accent">*</span>}
         </label>
         <textarea
           id="body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={12}
-          placeholder="본문을 입력하세요"
+          placeholder={useLivePage ? '비워두면 실제 페이지 본문을 가져옵니다' : '본문을 입력하세요'}
           className="min-h-[240px] resize-y rounded border border-line p-3 text-[15px] leading-relaxed text-ink outline-none focus:border-accent"
         />
 
@@ -174,7 +225,7 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
       <div className="mt-8 border-t border-line pt-6">
         <p className="mb-1 text-[15px] font-bold text-ink">연동 옵션</p>
         <p className="mb-4 text-[12px] text-ink-hint">
-          GB5 게시글 또는 고정 페이지 슬러그 중 하나만 연결할 수 있습니다. 모두 비우면 AX 단독 콘텐츠로 저장됩니다.
+          실제 페이지 모드에서는 아래 GB5 게시글 정보 또는 고정 페이지 슬러그 중 하나가 필요합니다.
         </p>
 
         <p className="mb-2 text-[13px] font-medium text-ink-secondary">GB5 게시글 연동</p>
