@@ -4,6 +4,14 @@ type Row = any
 type QueryResult<T> = { data: T | null; error: Error | null }
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
+const JSON_COLUMNS = new Set([
+  'faq_json',
+  'json_ld',
+  'content_breakdown',
+  'content_stats',
+  'entities',
+  'related_terms_coverage',
+])
 
 function requireSql() {
   if (!sql) {
@@ -28,6 +36,22 @@ function selectColumns(columns: string) {
     .split(',')
     .map((column) => quoteIdent(column.trim()))
     .join(', ')
+}
+
+function isJsonColumn(column: string) {
+  return JSON_COLUMNS.has(column)
+}
+
+function paramValue(column: string, value: unknown) {
+  if (isJsonColumn(column) && value !== null && value !== undefined) {
+    return JSON.stringify(value)
+  }
+
+  return value
+}
+
+function placeholder(column: string, index: number) {
+  return isJsonColumn(column) ? `$${index}::jsonb` : `$${index}`
 }
 
 class NeonTableQuery {
@@ -171,8 +195,8 @@ class NeonTableQuery {
     const valuesSql = validRows
       .map((row) => {
         const placeholders = columns.map((column) => {
-          params.push(row[column])
-          return `$${params.length}`
+          params.push(paramValue(column, row[column]))
+          return placeholder(column, params.length)
         })
         return `(${placeholders.join(', ')})`
       })
@@ -188,8 +212,8 @@ class NeonTableQuery {
     const payload = this.payload as Row
     const params: unknown[] = []
     const assignments = Object.keys(payload).map((column) => {
-      params.push(payload[column])
-      return `${quoteIdent(column)} = $${params.length}`
+      params.push(paramValue(column, payload[column]))
+      return `${quoteIdent(column)} = ${placeholder(column, params.length)}`
     })
     const returning = this.returnRows ? ` RETURNING ${this.selectClause}` : ''
     const query = `UPDATE ${quoteIdent(this.table)} SET ${assignments.join(', ')}${this.whereClause(params)}${returning}`
@@ -215,8 +239,8 @@ class NeonTableQuery {
     const valuesSql = validRows
       .map((row) => {
         const placeholders = columns.map((column) => {
-          params.push(row[column])
-          return `$${params.length}`
+          params.push(paramValue(column, row[column]))
+          return placeholder(column, params.length)
         })
         return `(${placeholders.join(', ')})`
       })
