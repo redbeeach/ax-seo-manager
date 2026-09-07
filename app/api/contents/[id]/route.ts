@@ -31,8 +31,12 @@ export async function PATCH(
     gb5_bo_table,
     gb5_wr_id,
     page_slug,
+    content_source_mode,
+    manual_title,
+    manual_body,
     import_from_live,
   } = body
+  const sourceMode = content_source_mode === 'live' ? 'live' : 'manual'
 
   if ((gb5_bo_table || gb5_wr_id) && page_slug) {
     return NextResponse.json(
@@ -50,6 +54,9 @@ export async function PATCH(
 
   const updateBody = { ...body }
   delete updateBody.import_from_live
+  updateBody.content_source_mode = sourceMode
+  updateBody.manual_title = typeof manual_title === 'string' && manual_title.trim() ? manual_title.trim() : null
+  updateBody.manual_body = typeof manual_body === 'string' && manual_body.trim() ? manual_body.trim() : null
 
   if (import_from_live) {
     try {

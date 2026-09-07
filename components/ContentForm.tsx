@@ -8,6 +8,9 @@ type ContentSourceMode = 'manual' | 'live'
 type ContentFormValues = {
   title: string
   body: string
+  content_source_mode?: ContentSourceMode | null
+  manual_title?: string | null
+  manual_body?: string | null
   gb5_bo_table?: string | null
   gb5_wr_id?: string | null
   page_slug?: string | null
@@ -28,9 +31,16 @@ function normalizeSlug(value: string) {
 
 export default function ContentForm({ mode, contentId, initialValues }: ContentFormProps) {
   const router = useRouter()
-  const [sourceMode, setSourceMode] = useState<ContentSourceMode>('manual')
-  const [title, setTitle] = useState(initialValues?.title ?? '')
-  const [body, setBody] = useState(initialValues?.body ?? '')
+  const initialSourceMode = initialValues?.content_source_mode === 'live' ? 'live' : 'manual'
+  const [sourceMode, setSourceMode] = useState<ContentSourceMode>(initialSourceMode)
+  const [manualTitle, setManualTitle] = useState(
+    initialValues?.manual_title ?? (initialSourceMode === 'manual' ? initialValues?.title : '') ?? ''
+  )
+  const [manualBody, setManualBody] = useState(
+    initialValues?.manual_body ?? (initialSourceMode === 'manual' ? initialValues?.body : '') ?? ''
+  )
+  const [liveTitle, setLiveTitle] = useState(initialSourceMode === 'live' ? initialValues?.title ?? '' : '')
+  const [liveBody, setLiveBody] = useState(initialSourceMode === 'live' ? initialValues?.body ?? '' : '')
   const [gb5BoTable, setGb5BoTable] = useState(initialValues?.gb5_bo_table ?? '')
   const [gb5WrId, setGb5WrId] = useState(initialValues?.gb5_wr_id ?? '')
   const [pageSlug, setPageSlug] = useState(initialValues?.page_slug ?? '')
@@ -42,13 +52,17 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
 
   const isEdit = mode === 'edit'
   const useLivePage = sourceMode === 'live'
+  const title = useLivePage ? liveTitle : manualTitle
+  const body = useLivePage ? liveBody : manualBody
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
-    const trimmedTitle = title.trim()
-    const trimmedBody = body.trim()
+    const trimmedManualTitle = manualTitle.trim()
+    const trimmedManualBody = manualBody.trim()
+    const trimmedLiveTitle = liveTitle.trim()
+    const trimmedLiveBody = liveBody.trim()
     const trimmedBoTable = gb5BoTable.trim()
     const trimmedWrId = gb5WrId.trim()
     const trimmedPageSlug = normalizeSlug(pageSlug)
@@ -56,7 +70,7 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
     const hasGb5Post = !!trimmedBoTable && !!trimmedWrId
     const hasLiveSource = !!trimmedPageSlug || hasGb5Post
 
-    if (!useLivePage && (!trimmedTitle || !trimmedBody)) {
+    if (!useLivePage && (!trimmedManualTitle || !trimmedManualBody)) {
       setError('직접 입력 모드에서는 제목과 본문을 입력해주세요.')
       return
     }
@@ -88,8 +102,11 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
         method: isEdit ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: trimmedTitle,
-          body: trimmedBody,
+          title: useLivePage ? trimmedLiveTitle : trimmedManualTitle,
+          body: useLivePage ? trimmedLiveBody : trimmedManualBody,
+          content_source_mode: sourceMode,
+          manual_title: trimmedManualTitle || null,
+          manual_body: trimmedManualBody || null,
           gb5_bo_table: trimmedBoTable || null,
           gb5_wr_id: trimmedWrId || null,
           page_slug: trimmedPageSlug || null,
@@ -135,7 +152,7 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
               제목/본문 직접 입력
             </span>
             <span className="mt-1 block pl-6 text-[12px] text-ink-hint">
-              입력한 제목과 본문을 기준으로 SEO 메타태그와 JSON-LD를 생성합니다.
+              직접 입력한 제목과 본문을 기준으로 SEO 메타태그와 JSON-LD를 생성합니다.
             </span>
           </label>
 
@@ -170,8 +187,8 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
           id="title"
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={useLivePage ? '비워두면 실제 페이지 제목을 사용합니다' : '제목을 입력하세요'}
+          onChange={(e) => (useLivePage ? setLiveTitle(e.target.value) : setManualTitle(e.target.value))}
+          placeholder={useLivePage ? '저장하면 실제 페이지 제목으로 갱신됩니다' : '제목을 입력하세요'}
           className="h-10 rounded border border-line px-3 text-[15px] text-ink outline-none focus:border-accent"
         />
 
@@ -181,9 +198,9 @@ export default function ContentForm({ mode, contentId, initialValues }: ContentF
         <textarea
           id="body"
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => (useLivePage ? setLiveBody(e.target.value) : setManualBody(e.target.value))}
           rows={12}
-          placeholder={useLivePage ? '비워두면 실제 페이지 본문을 가져옵니다' : '본문을 입력하세요'}
+          placeholder={useLivePage ? '저장하면 실제 페이지 본문으로 갱신됩니다' : '본문을 입력하세요'}
           className="min-h-[240px] resize-y rounded border border-line p-3 text-[15px] leading-relaxed text-ink outline-none focus:border-accent"
         />
 

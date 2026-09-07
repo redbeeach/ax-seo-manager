@@ -24,11 +24,17 @@ export async function POST(request: NextRequest) {
     canonical_url,
     robots_index,
     robots_follow,
+    content_source_mode,
+    manual_title,
+    manual_body,
     import_from_live,
   } = body
 
   let title = typeof body.title === 'string' ? body.title.trim() : ''
   let content = typeof body.body === 'string' ? body.body.trim() : ''
+  const sourceMode = content_source_mode === 'live' ? 'live' : 'manual'
+  const manualTitle = typeof manual_title === 'string' ? manual_title.trim() : title
+  const manualBody = typeof manual_body === 'string' ? manual_body.trim() : content
 
   if ((gb5_bo_table || gb5_wr_id) && page_slug) {
     return NextResponse.json(
@@ -75,6 +81,9 @@ export async function POST(request: NextRequest) {
       canonical_url,
       robots_index,
       robots_follow,
+      content_source_mode: sourceMode,
+      manual_title: manualTitle || null,
+      manual_body: manualBody || null,
     }])
     .select()
     .single()

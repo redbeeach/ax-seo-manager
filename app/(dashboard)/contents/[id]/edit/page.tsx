@@ -7,6 +7,9 @@ import ContentForm from '@/components/ContentForm'
 type ContentData = {
   title: string
   body: string
+  content_source_mode?: 'manual' | 'live' | null
+  manual_title?: string | null
+  manual_body?: string | null
   gb5_bo_table?: string | null
   gb5_wr_id?: string | null
   page_slug?: string | null

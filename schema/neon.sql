@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS contents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   body text NOT NULL,
+  content_source_mode text DEFAULT 'manual',
+  manual_title text,
+  manual_body text,
   seo_title text,
   meta_description text,
   og_title text,
@@ -28,6 +31,10 @@ CREATE TABLE IF NOT EXISTS contents (
 CREATE UNIQUE INDEX IF NOT EXISTS contents_gb5_source_idx
   ON contents (gb5_bo_table, gb5_wr_id)
   WHERE gb5_bo_table IS NOT NULL AND gb5_wr_id IS NOT NULL;
+
+ALTER TABLE contents ADD COLUMN IF NOT EXISTS content_source_mode text DEFAULT 'manual';
+ALTER TABLE contents ADD COLUMN IF NOT EXISTS manual_title text;
+ALTER TABLE contents ADD COLUMN IF NOT EXISTS manual_body text;
 
 CREATE TABLE IF NOT EXISTS content_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
