@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AX SEO Manager",
-  description: "그누보드5 게시판 콘텐츠를 위한 SEO, AEO, GEO 관리 도구",
+  description:
+    "그누보드5 게시판 콘텐츠를 위한 AI 기반 SEO, AEO, GEO 검색 최적화 도구",
 };
 
 export default function RootLayout({
