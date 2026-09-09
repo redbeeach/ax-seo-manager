@@ -280,3 +280,4 @@ const neonAdmin = {
 }
 
 export const supabaseAdmin = sql ? neonAdmin : supabaseService ?? neonAdmin
+export const databaseProvider = sql ? 'database-url' : supabaseService ? 'supabase' : 'none'

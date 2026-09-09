@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/server'
+import { databaseProvider, supabaseAdmin } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +34,7 @@ export async function GET() {
     requiredHeaders: ['content-type: application/json', 'x-gb5-secret'],
     configured: {
       secret: Boolean(process.env.GB5_SYNC_SECRET),
+      provider: databaseProvider,
       database: Boolean(
         process.env.DATABASE_URL ||
           (process.env.NEXT_PUBLIC_SUPABASE_URL &&
