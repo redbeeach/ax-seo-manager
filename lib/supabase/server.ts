@@ -279,4 +279,4 @@ const neonAdmin = {
   },
 }
 
-export const supabaseAdmin = supabaseService ?? neonAdmin
+export const supabaseAdmin = sql ? neonAdmin : supabaseService ?? neonAdmin
