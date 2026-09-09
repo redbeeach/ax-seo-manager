@@ -1,9 +1,23 @@
 import { neon } from '@neondatabase/serverless'
+import { createClient } from '@supabase/supabase-js'
 
-type Row = any
+type Row = Record<string, unknown>
 type QueryResult<T> = { data: T | null; error: Error | null }
 
 const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null
+const supabaseService =
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY,
+        {
+          auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+          },
+        }
+      )
+    : null
 const JSON_COLUMNS = new Set([
   'faq_json',
   'json_ld',
@@ -15,7 +29,9 @@ const JSON_COLUMNS = new Set([
 
 function requireSql() {
   if (!sql) {
-    throw new Error('DATABASE_URL is not configured.')
+    throw new Error(
+      'DATABASE_URL is not configured and Supabase service role is unavailable.'
+    )
   }
 
   return sql
@@ -128,7 +144,7 @@ class NeonTableQuery {
     onfulfilled?: ((value: QueryResult<Row[]>) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
   ) {
-    return this.execute().then(onfulfilled, onrejected)
+    return this.execute<Row[]>().then(onfulfilled, onrejected)
   }
 
   private whereClause(params: unknown[]) {
@@ -257,8 +273,10 @@ class NeonTableQuery {
   }
 }
 
-export const supabaseAdmin = {
+const neonAdmin = {
   from(table: string) {
     return new NeonTableQuery(table)
   },
 }
+
+export const supabaseAdmin = supabaseService ?? neonAdmin

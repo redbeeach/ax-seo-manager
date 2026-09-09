@@ -1,44 +1,95 @@
-// app/api/gb5/sync/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 
-// GB5 write_update.php 에서 호출. 메타태그가 아직 없는 글이 작성/수정될 때
-// title, body를 AX의 contents 테이블로 동기화(upsert)한다.
+export const dynamic = 'force-dynamic'
+
+type Gb5SyncBody = {
+  bo_table?: unknown
+  wr_id?: unknown
+  title?: unknown
+  content?: unknown
+}
+
+function json(data: unknown, init?: ResponseInit) {
+  return NextResponse.json(data, {
+    ...init,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      ...(init?.headers || {}),
+    },
+  })
+}
+
+function normalizeText(value: unknown) {
+  if (typeof value === 'string') return value.trim()
+  if (value === null || value === undefined) return ''
+  return String(value).trim()
+}
+
+export async function GET() {
+  return json({
+    ok: true,
+    endpoint: '/api/gb5/sync',
+    method: 'POST',
+    requiredHeaders: ['content-type: application/json', 'x-gb5-secret'],
+    configured: {
+      secret: Boolean(process.env.GB5_SYNC_SECRET),
+      database: Boolean(
+        process.env.DATABASE_URL ||
+          (process.env.NEXT_PUBLIC_SUPABASE_URL &&
+            process.env.SUPABASE_SERVICE_ROLE_KEY)
+      ),
+    },
+  })
+}
+
 export async function POST(req: NextRequest) {
+  if (!process.env.GB5_SYNC_SECRET) {
+    console.error('[gb5/sync] GB5_SYNC_SECRET is not configured.')
+    return json({ error: 'GB5_SYNC_SECRET is not configured.' }, { status: 500 })
+  }
+
   const secret = req.headers.get('x-gb5-secret')
 
   if (secret !== process.env.GB5_SYNC_SECRET) {
-    return NextResponse.json({ error: '인증 실패' }, { status: 401 })
+    return json({ error: 'Authentication failed.' }, { status: 401 })
   }
 
-  let body: any
+  let body: Gb5SyncBody
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'JSON 파싱 실패' }, { status: 400 })
+    return json({ error: 'Invalid JSON payload.' }, { status: 400 })
   }
 
-  const { bo_table, wr_id, title, content } = body
+  const boTable = normalizeText(body.bo_table)
+  const wrId = normalizeText(body.wr_id)
+  const title = normalizeText(body.title)
+  const content = normalizeText(body.content)
 
-  if (!bo_table || !wr_id || !title) {
-    return NextResponse.json(
-      { error: 'bo_table, wr_id, title은 필수입니다.' },
+  if (!boTable || !wrId || !title) {
+    return json(
+      { error: 'bo_table, wr_id, and title are required.' },
       { status: 400 }
     )
   }
 
-  const { data: existing } = await supabaseAdmin
+  const { data: existing, error: lookupError } = await supabaseAdmin
     .from('contents')
     .select('id, seo_title')
-    .eq('gb5_bo_table', bo_table)
-    .eq('gb5_wr_id', wr_id)
+    .eq('gb5_bo_table', boTable)
+    .eq('gb5_wr_id', wrId)
     .maybeSingle()
 
-  // 이미 AI 최적화(메타태그)가 적용된 글이면, 본문 동기화로 덮어쓰지 않는다.
+  if (lookupError) {
+    console.error('[gb5/sync] lookup failed:', lookupError.message)
+    return json({ error: lookupError.message }, { status: 500 })
+  }
+
   if (existing?.seo_title) {
-    return NextResponse.json({
+    return json({
       skipped: true,
-      reason: '이미 메타태그가 적용된 콘텐츠라 동기화를 건너뜁니다.',
+      reason: 'Content already has an optimized SEO title.',
       id: existing.id,
     })
   }
@@ -50,10 +101,11 @@ export async function POST(req: NextRequest) {
       .eq('id', existing.id)
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      console.error('[gb5/sync] update failed:', error.message)
+      return json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ updated: true, id: existing.id })
+    return json({ updated: true, id: existing.id })
   }
 
   const { data: created, error } = await supabaseAdmin
@@ -61,15 +113,21 @@ export async function POST(req: NextRequest) {
     .insert({
       title,
       body: content,
-      gb5_bo_table: bo_table,
-      gb5_wr_id: wr_id,
+      gb5_bo_table: boTable,
+      gb5_wr_id: wrId,
     })
     .select('id')
     .single()
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[gb5/sync] insert failed:', error.message)
+    return json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ created: true, id: created.id })
+  if (!created) {
+    console.error('[gb5/sync] insert returned no row.')
+    return json({ error: 'Insert returned no row.' }, { status: 500 })
+  }
+
+  return json({ created: true, id: created.id }, { status: 201 })
 }
