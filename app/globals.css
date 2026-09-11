@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Pretendard Variable";
+  font-style: normal;
+  font-weight: 45 920;
+  font-display: swap;
+  src: url("/fonts/pretendard/PretendardVariable.woff2") format("woff2-variations");
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -22,8 +30,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Pretendard", var(--font-geist-sans), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* 여기 등록해야 bg-accent, text-ink 같은 Tailwind 클래스로 쓸 수 있음 */
   --color-accent: var(--color-accent);
@@ -51,4 +59,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+.font-mono-tech {
+  font-family: var(--font-mono);
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
 }
