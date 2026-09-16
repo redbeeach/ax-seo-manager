@@ -102,6 +102,14 @@ function formatKstDateTime(value: string | null | undefined) {
   })
 }
 
+function escapeHtml(value: string | null | undefined) {
+  return (value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -265,6 +273,27 @@ export default async function ContentDetailPage({
 
   const liveVerifiedLabel = formatKstDateTime(liveAnalysis?.crawled_at)
   const jsonLdText = JSON.stringify(content.json_ld, null, 2)
+  const keywordText = [...keywords.primary, ...keywords.secondary.map((k) => k.word)]
+    .filter((word, index, words) => words.indexOf(word) === index)
+    .slice(0, 10)
+    .join(',')
+  const jsonLdInlineText = content.json_ld ? JSON.stringify(content.json_ld) : ''
+  const headPreview = `<head>
+  <title>${escapeHtml(content.seo_title || content.title)}</title>
+  <meta name="description" content="${escapeHtml(content.meta_description)}">
+  <meta name="author" content="${escapeHtml(process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자')}">
+  <meta name="keywords" content="${escapeHtml(keywordText)}">
+  ${liveUrl ? `<link rel="canonical" href="${escapeHtml(liveUrl)}">` : ''}
+  <meta name="robots" content="${content.robots_index !== false ? 'index' : 'noindex'},${content.robots_follow !== false ? 'follow' : 'nofollow'}">
+  <meta property="og:title" content="${escapeHtml(content.og_title || content.seo_title || content.title)}">
+  <meta property="og:description" content="${escapeHtml(content.og_description || content.meta_description)}">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="${escapeHtml(content.og_title || content.seo_title || content.title)}">
+  <meta name="twitter:description" content="${escapeHtml(content.og_description || content.meta_description)}">
+  <meta name="apple-mobile-web-app-title" content="${escapeHtml(content.og_title || content.seo_title || content.title)}">
+  ${jsonLdInlineText ? `<script type="application/ld+json">${jsonLdInlineText}</script>` : ''}
+</head>`
 
   return (
     <>
@@ -471,15 +500,7 @@ export default async function ContentDetailPage({
                     </span>
                   </div>
                   <pre className="max-h-[360px] overflow-auto rounded-lg bg-ink p-4 text-[12px] leading-5 text-zinc-100">
-{`<head>
-  <title>${content.seo_title}</title>
-  <meta name="description" content="${content.meta_description ?? ''}">
-  <meta property="og:title" content="${content.og_title ?? ''}">
-  <meta property="og:description" content="${content.og_description ?? ''}">
-  <script type="application/ld+json">
-${jsonLdText}
-  </script>
-</head>`}
+                    {headPreview}
                   </pre>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12px] text-ink-hint">
                     <span>Last verified {liveVerifiedLabel ?? '검증 전'}</span>
