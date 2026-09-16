@@ -164,11 +164,11 @@ export default function AiOptimizeButton({
           <p className="mb-3 text-[12px] font-bold uppercase tracking-[0.18em] text-white/60">
             AI Content Optimization
           </p>
-          <h2 className="mb-3 text-[28px] font-black leading-tight tracking-tight">
-            GPT 생성에서 GNUboard 적용, Live 검증까지 한 번에 실행합니다.
+          <h2 className="mb-3 text-[28px] leading-tight tracking-tight">
+            GPT 생성에서 GNUboard 적용,<br />  Live 검증까지 한 번에 실행합니다.
           </h2>
           <p className="max-w-2xl text-[14px] leading-6 text-white/72">
-            현재 콘텐츠를 분석하여 SEO · AEO · GEO 최적화 데이터를 생성하고 실제 페이지 출력에 필요한 메타 데이터를 자동 반영합니다.
+            현재 콘텐츠를 분석하여 SEO · AEO · GEO 최적화 데이터를 생성하고 실제 페이지 출력에 필요한 메타 데이터를 <br />자동 반영합니다.
           </p>
 
           <div className="mt-5 flex flex-wrap gap-2">
@@ -272,7 +272,7 @@ export default function AiOptimizeButton({
 
           {status === 'idle' && optimizedCount > 0 && (
             <p className="mt-5 rounded-lg bg-white/8 px-3 py-2 text-[12px] text-white/62">
-              현재 {optimizedCount}개 최적화 항목이 저장되어 있습니다. 다시 실행하면 새 버전이 생성되고 이전 버전은 복원 기록에 보관됩니다.
+              현재 {optimizedCount}개 최적화 항목이 저장되어 있습니다. <br />다시 실행하면 새 버전이 생성되고 이전 버전은 복원 기록에 보관됩니다.
             </p>
           )}
         </div>
