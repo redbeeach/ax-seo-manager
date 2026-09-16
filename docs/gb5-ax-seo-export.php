@@ -14,6 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+// Set this to the same value as Vercel's GB5_SYNC_SECRET or GB5_IMPORT_SECRET.
+// If Cafe24 environment variables are unavailable, replace CHANGE_ME with the
+// actual secret, but keep the check below comparing against CHANGE_ME only.
 $secret = getenv('GB5_SYNC_SECRET') ?: 'CHANGE_ME';
 $headerSecret = $_SERVER['HTTP_X_GB5_SECRET'] ?? '';
 
