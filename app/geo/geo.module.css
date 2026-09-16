@@ -21,17 +21,17 @@
 }
 
 .brand {
-  gap: 10px;
-  font-size: 13px;
+  gap: 12px;
+  font-size: 16px;
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .brandMark {
   display: inline-flex;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 8px;
