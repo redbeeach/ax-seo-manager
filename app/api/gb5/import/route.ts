@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
-import { htmlToText } from '@/lib/gb5/crawl'
+import { fetchLivePageContent, htmlToText } from '@/lib/gb5/crawl'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +38,7 @@ type ImportResult = {
   action: 'created' | 'updated' | 'skipped' | 'error'
   id?: string
   error?: string
+  source?: 'live' | 'export'
 }
 
 const DEFAULT_LIMIT = 50
@@ -89,16 +90,30 @@ function rowId(row: Record<string, unknown> | null) {
 async function importPost(post: Gb5ExportPost, dryRun: boolean): Promise<ImportResult> {
   const boTable = normalizeText(post.bo_table)
   const wrId = normalizeText(post.wr_id)
-  const title = normalizeText(post.title || post.subject || post.wr_subject)
-  const body = htmlToText(normalizeText(post.content || post.body || post.wr_content))
+  let title = normalizeText(post.title || post.subject || post.wr_subject)
+  let body = htmlToText(normalizeText(post.content || post.body || post.wr_content))
   const key = boTable && wrId ? `${boTable}:${wrId}` : 'unknown'
+  let source: ImportResult['source'] = 'export'
 
-  if (!boTable || !wrId || !title || !body) {
-    return { type: 'post', key, title, action: 'skipped', error: 'bo_table, wr_id, title, body are required.' }
+  if (!boTable || !wrId) {
+    return { type: 'post', key, title, action: 'skipped', error: 'bo_table and wr_id are required.' }
+  }
+
+  try {
+    const live = await fetchLivePageContent({ title, gb5_bo_table: boTable, gb5_wr_id: wrId })
+    title = live.title
+    body = live.text
+    source = 'live'
+  } catch (error) {
+    console.warn('[gb5/import] live post fetch failed, using export body:', key, error)
+  }
+
+  if (!title || !body) {
+    return { type: 'post', key, title, action: 'skipped', error: 'title and body are required.' }
   }
 
   if (dryRun) {
-    return { type: 'post', key, title, action: 'skipped' }
+    return { type: 'post', key, title, action: 'skipped', source }
   }
 
   const { data: existing, error: lookupError } = await supabaseAdmin
@@ -125,7 +140,7 @@ async function importPost(post: Gb5ExportPost, dryRun: boolean): Promise<ImportR
   if (existing) {
     const { error } = await supabaseAdmin.from('contents').update(payload).eq('id', existing.id)
     if (error) return { type: 'post', key, title, action: 'error', error: error.message }
-    return { type: 'post', key, title, action: 'updated', id: rowId(existing) }
+    return { type: 'post', key, title, action: 'updated', id: rowId(existing), source }
   }
 
   const { data: created, error } = await supabaseAdmin
@@ -135,22 +150,36 @@ async function importPost(post: Gb5ExportPost, dryRun: boolean): Promise<ImportR
     .single()
 
   if (error) return { type: 'post', key, title, action: 'error', error: error.message }
-  return { type: 'post', key, title, action: 'created', id: rowId(created) }
+  return { type: 'post', key, title, action: 'created', id: rowId(created), source }
 }
 
 async function importPage(page: Gb5ExportPage, dryRun: boolean): Promise<ImportResult> {
   const slug = normalizeText(page.page_slug || page.slug).replace(/^\/+/, '').replace(/\.php$/i, '')
-  const title = normalizeText(page.title)
-  const body = htmlToText(normalizeText(page.content || page.body))
+  let title = normalizeText(page.title)
+  let body = htmlToText(normalizeText(page.content || page.body))
   const canonicalUrl = normalizeText(page.canonical_url) || null
   const key = slug || 'unknown'
+  let source: ImportResult['source'] = 'export'
 
-  if (!slug || !title || !body) {
-    return { type: 'page', key, title, action: 'skipped', error: 'slug, title, body are required.' }
+  if (!slug) {
+    return { type: 'page', key, title, action: 'skipped', error: 'slug is required.' }
+  }
+
+  try {
+    const live = await fetchLivePageContent({ title, page_slug: slug })
+    title = live.title
+    body = live.text
+    source = 'live'
+  } catch (error) {
+    console.warn('[gb5/import] live page fetch failed, using export body:', key, error)
+  }
+
+  if (!title || !body) {
+    return { type: 'page', key, title, action: 'skipped', error: 'title and body are required.' }
   }
 
   if (dryRun) {
-    return { type: 'page', key, title, action: 'skipped' }
+    return { type: 'page', key, title, action: 'skipped', source }
   }
 
   const { data: existing, error: lookupError } = await supabaseAdmin
@@ -177,7 +206,7 @@ async function importPage(page: Gb5ExportPage, dryRun: boolean): Promise<ImportR
   if (existing) {
     const { error } = await supabaseAdmin.from('contents').update(payload).eq('id', existing.id)
     if (error) return { type: 'page', key, title, action: 'error', error: error.message }
-    return { type: 'page', key, title, action: 'updated', id: rowId(existing) }
+    return { type: 'page', key, title, action: 'updated', id: rowId(existing), source }
   }
 
   const { data: created, error } = await supabaseAdmin
@@ -187,7 +216,7 @@ async function importPage(page: Gb5ExportPage, dryRun: boolean): Promise<ImportR
     .single()
 
   if (error) return { type: 'page', key, title, action: 'error', error: error.message }
-  return { type: 'page', key, title, action: 'created', id: rowId(created) }
+  return { type: 'page', key, title, action: 'created', id: rowId(created), source }
 }
 
 export async function GET() {

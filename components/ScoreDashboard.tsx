@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Tooltip from '@/components/Tooltip'
 import { getTip } from '@/lib/score/breakdown-tips'
 
@@ -80,6 +81,7 @@ export default function ScoreDashboard({
   onCrawlResult,
   initialCrawlResult,
 }: ScoreDashboardProps) {
+  const router = useRouter()
   const [crawlLoading, setCrawlLoading] = useState(false)
   const [crawlError, setCrawlError] = useState<string | null>(null)
   const [crawlResult, setCrawlResult] = useState<CrawlApiResult | null>(initialCrawlResult ?? null)
@@ -106,6 +108,7 @@ export default function ScoreDashboard({
       setCrawlResult(data)
       setShowLive(true)
       onCrawlResult?.({ title: data.title, body: data.body, url: data.url })
+      router.refresh()
     } catch (err) {
       setCrawlError(err instanceof Error ? err.message : '알 수 없는 오류')
     } finally {

@@ -45,6 +45,16 @@ export async function POST(
   const crawledAt = new Date().toISOString()
 
   await supabaseAdmin
+    .from('contents')
+    .update({
+      title: live.title,
+      body: live.text,
+      content_source_mode: 'live',
+      updated_at: crawledAt,
+    })
+    .eq('id', id)
+
+  await supabaseAdmin
     .from('content_live_analyses')
     .upsert(
       {
@@ -63,7 +73,7 @@ export async function POST(
     crawled_at: crawledAt,
     page_title: live.title,
     title: live.title,
-    body: live.body,
+    body: live.text,
     content_score: analysis.content_score,
     content_breakdown: analysis.content_breakdown,
     stats: analysis.stats,
