@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
+import DashboardShell from "@/components/DashboardShell";
 import styles from "./geo.module.css";
 
 interface AuditItem {
@@ -210,17 +211,8 @@ export default function GeoAuditClient() {
   }
 
   return (
+    <DashboardShell>
     <main className={styles.page}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
-          <span className={styles.brandMark}>AX</span>
-          <span>AX SEO Manager</span>
-        </Link>
-        <Link href="/contents" className={styles.headerLink}>
-          관리자 콘솔
-        </Link>
-      </header>
-
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <span className={styles.kicker}>Free GEO·AEO Audit</span>
@@ -507,5 +499,6 @@ export default function GeoAuditClient() {
         </section>
       ) : null}
     </main>
+    </DashboardShell>
   );
 }
