@@ -385,12 +385,12 @@ export default async function ContentDetailPage({
               </span>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-3">
+            <div className="space-y-4">
+              <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
                 <div className="rounded-xl border border-line bg-surface p-4">
-                  <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[13px] font-black text-ink">SEO Title</p>
-                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                    <span className="shrink-0 whitespace-nowrap rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
                       GENERATED · APPLIED ✓
                     </span>
                   </div>
@@ -398,9 +398,9 @@ export default async function ContentDetailPage({
                 </div>
 
                 <div className="rounded-xl border border-line bg-surface p-4">
-                  <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[13px] font-black text-ink">Meta Description</p>
-                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                    <span className="shrink-0 whitespace-nowrap rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
                       GENERATED · APPLIED ✓
                     </span>
                   </div>
@@ -408,9 +408,9 @@ export default async function ContentDetailPage({
                 </div>
 
                 <div className="rounded-xl border border-line bg-surface p-4">
-                  <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[13px] font-black text-ink">Open Graph</p>
-                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                    <span className="shrink-0 whitespace-nowrap rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
                       GENERATED · APPLIED ✓
                     </span>
                   </div>
@@ -419,9 +419,9 @@ export default async function ContentDetailPage({
                 </div>
 
                 <div className="rounded-xl border border-line bg-surface p-4">
-                  <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[13px] font-black text-ink">FAQ</p>
-                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                    <span className="shrink-0 whitespace-nowrap rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
                       {faqItems.length} ITEMS · APPLIED ✓
                     </span>
                   </div>
@@ -435,20 +435,20 @@ export default async function ContentDetailPage({
                   </ul>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2 xl:col-span-2">
                   <div className="rounded-xl border border-line bg-surface p-4">
-                    <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-[13px] font-black text-ink">AEO Answer</p>
-                      <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      <span className="shrink-0 whitespace-nowrap rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
                         APPLIED ✓
                       </span>
                     </div>
                     <p className="text-[14px] leading-6 text-ink-secondary">{content.ae_answer}</p>
                   </div>
                   <div className="rounded-xl border border-line bg-surface p-4">
-                    <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <p className="text-[13px] font-black text-ink">GEO Summary</p>
-                      <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      <span className="shrink-0 whitespace-nowrap rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
                         APPLIED ✓
                       </span>
                     </div>
@@ -457,8 +457,8 @@ export default async function ContentDetailPage({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="rounded-xl border border-line bg-surface-muted p-4">
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="rounded-xl border border-line bg-surface-muted p-4 xl:col-span-2">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[13px] font-black text-ink">Live Page Verification</p>
