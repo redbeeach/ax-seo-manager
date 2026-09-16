@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
 
 const navItems: { label: string; href: string; external?: boolean }[] = [
   { label: '대시보드', href: '/dashboard' },
   { label: '콘텐츠 목록', href: '/contents' },
+  { label: '그누보드 연동', href: '/integrations/gb5' },
   { label: '이미지 최적화', href: '/tools/image' },
   { label: '📖 사용 매뉴얼', href: '/manual.html', external: true },
 ]
@@ -20,6 +20,7 @@ export default function DashboardLayout({
   const router = useRouter()
 
   const handleLogout = async () => {
+    const { supabase } = await import('@/lib/supabase/client')
     await supabase.auth.signOut()
     router.push('/login')
     router.refresh()

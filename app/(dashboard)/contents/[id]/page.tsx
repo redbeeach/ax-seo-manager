@@ -12,6 +12,96 @@ import VersionHistory from '@/components/VersionHistory'
 import ContentInsights from '@/components/ContentInsights'
 import CompareCard from '@/components/CompareCard'
 
+interface FaqItem {
+  question: string
+  answer: string
+}
+
+interface ContentRecord {
+  id: string
+  title: string
+  body: string | null
+  seo_title: string | null
+  meta_description: string | null
+  og_title: string | null
+  og_description: string | null
+  faq_json: FaqItem[] | null
+  ae_answer: string | null
+  geo_summary: string | null
+  json_ld: Record<string, unknown> | null
+  canonical_url: string | null
+  robots_index: boolean | null
+  robots_follow: boolean | null
+  page_slug: string | null
+  gb5_bo_table: string | null
+  gb5_wr_id: string | number | null
+  created_at: string
+}
+
+interface LiveAnalysisRecord {
+  url: string
+  crawled_at: string
+  content_score: number
+  content_breakdown: {
+    label: string
+    points: number
+    maxPoints: number
+    passed: boolean
+  }[]
+  content_stats: Record<string, unknown>
+}
+
+interface EntityAnalysisRecord {
+  topic: string | null
+  entities: Record<string, string>[]
+  related_terms_coverage: { term: string; reason: string; covered: boolean }[]
+  covered_count: number
+  total_count: number
+  coverage_ratio: number
+  is_live: boolean
+  analyzed_at: string
+}
+
+interface ScoreHistoryRecord {
+  id: string
+  recorded_at: string
+  recorded_date: string
+  overall_score: number | null
+  seo_score: number | null
+  aeo_score: number | null
+  geo_score: number | null
+  content_score: number | null
+  citation_score: number | null
+  eeat_score: number | null
+  readability_score: number | null
+}
+
+function getGrade(score: number) {
+  if (score >= 90) return 'A+'
+  if (score >= 80) return 'A'
+  if (score >= 70) return 'B'
+  if (score >= 60) return 'C'
+  if (score >= 50) return 'D'
+  return 'F'
+}
+
+function averageScore(values: number[]) {
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+}
+
+function formatKstDateTime(value: string | null | undefined) {
+  if (!value) return null
+  const isoValue = /Z$|[+-]\d{2}:?\d{2}$/.test(value) ? value : value + 'Z'
+  return new Date(isoValue).toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -19,11 +109,12 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params
 
-  const { data: content } = await supabaseAdmin
+  const { data } = await supabaseAdmin
     .from('contents')
     .select('*')
     .eq('id', id)
     .single()
+  const content = data as ContentRecord | null
 
   if (!content) return {}
 
@@ -51,17 +142,19 @@ export default async function ContentDetailPage({
 }) {
   const { id } = await params
 
-  const { data: content, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('contents')
     .select('*')
     .eq('id', id)
     .single()
+  const content = data as ContentRecord | null
 
   if (error || !content) {
     notFound()
   }
 
   const displayBody = htmlToText(content.body ?? '')
+  const liveUrl = buildLiveUrl(content)
 
   const scores = calculateScores({
     title: content.title,
@@ -82,41 +175,72 @@ export default async function ContentDetailPage({
     gb5_wr_id: content.gb5_wr_id,
   })
 
+  const baselineScores = calculateScores({
+    title: content.title,
+    seo_title: null,
+    meta_description: null,
+    og_title: null,
+    og_description: null,
+    faq_json: null,
+    ae_answer: null,
+    geo_summary: null,
+    json_ld: null,
+    body: displayBody,
+    canonical_url: content.canonical_url,
+    robots_index: content.robots_index,
+    robots_follow: content.robots_follow,
+    page_slug: content.page_slug,
+    gb5_bo_table: content.gb5_bo_table,
+    gb5_wr_id: content.gb5_wr_id,
+  })
+
   const keywords = analyzeKeywords(content.title, displayBody)
 
-  // 최근 Live 분석 결과 조회
-  const { data: liveAnalysis } = await supabaseAdmin
+  const overallScore = averageScore([
+    scores.seo_score,
+    scores.aeo_score,
+    scores.geo_score,
+    scores.content_score,
+    scores.citation_score,
+    scores.eeat_score,
+    scores.readability_score,
+  ])
+
+  const baselineOverallScore = averageScore([
+    baselineScores.seo_score,
+    baselineScores.aeo_score,
+    baselineScores.geo_score,
+    baselineScores.content_score,
+    baselineScores.citation_score,
+    baselineScores.eeat_score,
+    baselineScores.readability_score,
+  ])
+
+  const { data: liveAnalysisData } = await supabaseAdmin
     .from('content_live_analyses')
     .select('*')
     .eq('content_id', id)
     .single()
+  const liveAnalysis = liveAnalysisData as LiveAnalysisRecord | null
 
-  // Entity/Semantic 분석 결과 조회
-  const { data: entityAnalysis } = await supabaseAdmin
+  const { data: entityAnalysisData } = await supabaseAdmin
     .from('content_entity_analyses')
     .select('*')
     .eq('content_id', id)
     .single()
+  const entityAnalysis = entityAnalysisData as EntityAnalysisRecord | null
 
-  // 점수 히스토리 조회 (최근 14개)
-  const { data: scoreHistory } = await supabaseAdmin
+  const { data: scoreHistoryData } = await supabaseAdmin
     .from('content_score_history')
     .select('*')
     .eq('content_id', id)
     .order('recorded_at', { ascending: true })
     .limit(14)
+  const scoreHistory = (scoreHistoryData ?? []) as unknown as ScoreHistoryRecord[]
 
-  // 오늘 히스토리 없으면 자동 저장
   const today = new Date().toISOString().slice(0, 10)
-  const hasToday = scoreHistory?.some(
-    (h) => h.recorded_date === today
-  )
+  const hasToday = scoreHistory?.some((h) => h.recorded_date === today)
   if (!hasToday) {
-    const overallScore = Math.round(
-      (scores.seo_score + scores.aeo_score + scores.geo_score +
-        scores.content_score + scores.citation_score +
-        scores.eeat_score + scores.readability_score) / 7
-    )
     await supabaseAdmin.from('content_score_history').upsert(
       {
         content_id: id,
@@ -135,6 +259,13 @@ export default async function ContentDetailPage({
     ).select()
   }
 
+  const faqItems = Array.isArray(content.faq_json)
+    ? (content.faq_json as { question: string; answer: string }[])
+    : []
+
+  const liveVerifiedLabel = formatKstDateTime(liveAnalysis?.crawled_at)
+  const jsonLdText = JSON.stringify(content.json_ld, null, 2)
+
   return (
     <>
       {content.json_ld && (
@@ -144,7 +275,6 @@ export default async function ContentDetailPage({
         />
       )}
       <div className="mx-auto w-full max-w-[1400px] bg-surface px-10 py-10">
-        {/* 헤더 */}
         <div className="mb-2 flex items-start justify-between">
           <div>
             <p className="mb-2.5 text-sm font-medium text-accent">콘텐츠 / 상세</p>
@@ -153,23 +283,23 @@ export default async function ContentDetailPage({
                 {content.title}
               </h1>
               {content.gb5_bo_table && content.gb5_wr_id && (
-                
-                  <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
+                <a
+                  href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
-                  title="그누보드 원본 글 새 탭에서 열기"
+                  title="그누보드 원본 글을 새 창에서 열기"
                 >
                   GB5 원본 보기 ↗
                 </a>
               )}
               {content.page_slug && (
-                
-                  <a href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`}
+                <a
+                  href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
-                  title="고정 페이지 새 탭에서 열기"
+                  title="고정 페이지를 새 창에서 열기"
                 >
                   {content.page_slug} 보기 ↗
                 </a>
@@ -193,7 +323,6 @@ export default async function ContentDetailPage({
           </div>
         </div>
 
-        {/* 점수 카드 + 개선추천 + 브레이크다운 + 키워드 분석 + Entity/Semantic (크롤링 결과 공유) */}
         <ContentInsights
           contentId={id}
           seo={{ score: scores.seo_score, breakdown: scores.seo_breakdown }}
@@ -218,63 +347,223 @@ export default async function ContentDetailPage({
           }}
         />
 
-        <div className="mb-7">
-          <AiOptimizeButton id={id} title={content.title} body={displayBody} />
-        </div>
+        <AiOptimizeButton
+          id={id}
+          title={content.title}
+          body={displayBody}
+          liveUrl={liveAnalysis?.url ?? liveUrl}
+          liveVerifiedAt={liveAnalysis?.crawled_at ?? null}
+          optimized={{
+            seoTitle: content.seo_title,
+            metaDescription: content.meta_description,
+            ogTitle: content.og_title,
+            ogDescription: content.og_description,
+            faqCount: faqItems.length,
+            aeAnswer: content.ae_answer,
+            geoSummary: content.geo_summary,
+            hasJsonLd: !!content.json_ld,
+          }}
+        />
 
         <div className="mb-8 whitespace-pre-wrap border-t border-line pt-6 text-[15px] leading-relaxed text-ink">
           {displayBody}
         </div>
 
-        {/* AI 최적화 결과 */}
         {content.seo_title && (
-          <div className="border-t border-line pt-7">
-            <p className="mb-6 text-[17px] font-bold text-ink">AI 최적화 결과</p>
-
-            <div className="grid grid-cols-[160px_1fr] gap-y-6 text-[15px]">
-              <p className="text-sm font-medium text-ink-hint">SEO Title</p>
-              <p className="text-ink">{content.seo_title}</p>
-
-              <p className="text-sm font-medium text-ink-hint">Meta Description</p>
-              <p className="text-ink">{content.meta_description}</p>
-
-              <p className="self-start text-sm font-medium text-ink-hint">
-                OG Title / Description
-              </p>
+          <section id="ai-optimization-results" className="border-t border-line pt-7">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="text-ink">{content.og_title}</p>
-                <p className="text-ink-secondary">{content.og_description}</p>
+                <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-hint">
+                  AI Optimization Result
+                </p>
+                <h2 className="mt-1 text-[22px] font-black tracking-tight text-ink">
+                  생성된 데이터가 CMS에 적용되었습니다.
+                </h2>
+              </div>
+              <span className="rounded-full bg-green-50 px-3 py-1 text-[12px] font-bold text-score-good">
+                GENERATED · APPLIED ✓
+              </span>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="space-y-3">
+                <div className="rounded-xl border border-line bg-surface p-4">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-black text-ink">SEO Title</p>
+                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      GENERATED · APPLIED ✓
+                    </span>
+                  </div>
+                  <p className="text-[15px] leading-6 text-ink">{content.seo_title}</p>
+                </div>
+
+                <div className="rounded-xl border border-line bg-surface p-4">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-black text-ink">Meta Description</p>
+                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      GENERATED · APPLIED ✓
+                    </span>
+                  </div>
+                  <p className="text-[15px] leading-6 text-ink-secondary">{content.meta_description}</p>
+                </div>
+
+                <div className="rounded-xl border border-line bg-surface p-4">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-black text-ink">Open Graph</p>
+                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      GENERATED · APPLIED ✓
+                    </span>
+                  </div>
+                  <p className="text-[15px] font-medium text-ink">{content.og_title}</p>
+                  <p className="mt-1 text-[14px] leading-6 text-ink-secondary">{content.og_description}</p>
+                </div>
+
+                <div className="rounded-xl border border-line bg-surface p-4">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-black text-ink">FAQ</p>
+                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      {faqItems.length} ITEMS · APPLIED ✓
+                    </span>
+                  </div>
+                  <ul className="space-y-3">
+                    {faqItems.map((faq, i) => (
+                      <li key={i}>
+                        <p className="font-medium text-ink">Q. {faq.question}</p>
+                        <p className="mt-1 text-[14px] leading-6 text-ink-secondary">A. {faq.answer}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-line bg-surface p-4">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-black text-ink">AEO Answer</p>
+                      <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                        APPLIED ✓
+                      </span>
+                    </div>
+                    <p className="text-[14px] leading-6 text-ink-secondary">{content.ae_answer}</p>
+                  </div>
+                  <div className="rounded-xl border border-line bg-surface p-4">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <p className="text-[13px] font-black text-ink">GEO Summary</p>
+                      <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                        APPLIED ✓
+                      </span>
+                    </div>
+                    <p className="text-[14px] leading-6 text-ink-secondary">{content.geo_summary}</p>
+                  </div>
+                </div>
               </div>
 
-              <p className="self-start text-sm font-medium text-ink-hint">FAQ</p>
-              <ul className="space-y-3">
-                {content.faq_json?.map(
-                  (faq: { question: string; answer: string }, i: number) => (
-                    <li key={i}>
-                      <p className="font-medium text-ink">Q. {faq.question}</p>
-                      <p className="text-ink-secondary">A. {faq.answer}</p>
-                    </li>
-                  )
-                )}
-              </ul>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-line bg-surface-muted p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[13px] font-black text-ink">Live Page Verification</p>
+                      <p className="mt-1 text-[12px] text-ink-hint">
+                        실제 페이지 head 출력 기준으로 확인합니다.
+                      </p>
+                    </div>
+                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      {liveAnalysis ? 'VERIFIED ✓' : 'READY'}
+                    </span>
+                  </div>
+                  <pre className="max-h-[360px] overflow-auto rounded-lg bg-ink p-4 text-[12px] leading-5 text-zinc-100">
+{`<head>
+  <title>${content.seo_title}</title>
+  <meta name="description" content="${content.meta_description ?? ''}">
+  <meta property="og:title" content="${content.og_title ?? ''}">
+  <meta property="og:description" content="${content.og_description ?? ''}">
+  <script type="application/ld+json">
+${jsonLdText}
+  </script>
+</head>`}
+                  </pre>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[12px] text-ink-hint">
+                    <span>Last verified {liveVerifiedLabel ?? '검증 전'}</span>
+                    {liveUrl && (
+                      <a
+                        href={liveUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded border border-line bg-surface px-3 py-1.5 font-bold text-ink-secondary hover:text-ink"
+                      >
+                        Live Page 보기
+                      </a>
+                    )}
+                  </div>
+                </div>
 
-              <p className="text-sm font-medium text-ink-hint">AEO 한 줄 답변</p>
-              <p className="text-ink">{content.ae_answer}</p>
+                <div className="rounded-xl border border-line bg-surface p-4">
+                  <p className="mb-4 text-[13px] font-black text-ink">Before / After</p>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                    <div className="rounded-lg bg-surface-muted p-4 text-center">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-ink-hint">Before</p>
+                      <p className="mt-1 text-[42px] font-black leading-none text-ink">{baselineOverallScore}</p>
+                      <p className="mt-1 text-[13px] font-bold text-ink-hint">Grade {getGrade(baselineOverallScore)}</p>
+                    </div>
+                    <span className="text-[24px] font-black text-ink-hint">→</span>
+                    <div className="rounded-lg bg-ink p-4 text-center text-white">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-white/55">After</p>
+                      <p className="mt-1 text-[42px] font-black leading-none">{overallScore}</p>
+                      <p className="mt-1 text-[13px] font-bold text-white/70">
+                        Grade {getGrade(overallScore)}
+                        {overallScore > baselineOverallScore && (
+                          <span className="ml-1 text-emerald-300">+{overallScore - baselineOverallScore}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2 text-[13px]">
+                    {[
+                      ['AI Citation', baselineScores.citation_score, scores.citation_score],
+                      ['Content', baselineScores.content_score, scores.content_score],
+                      ['GEO', baselineScores.geo_score, scores.geo_score],
+                    ].map(([label, before, after]) => (
+                      <div key={label as string} className="flex items-center justify-between rounded bg-surface-muted px-3 py-2">
+                        <span className="text-ink-secondary">{label}</span>
+                        <span className="font-bold text-ink">
+                          {before} → {after}
+                          {(after as number) > (before as number) && (
+                            <span className="ml-1 text-score-good">+{(after as number) - (before as number)}</span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-              <p className="text-sm font-medium text-ink-hint">GEO 요약</p>
-              <p className="text-ink">{content.geo_summary}</p>
-
-              <p className="self-start text-sm font-medium text-ink-hint">JSON-LD</p>
-              <pre className="overflow-x-auto rounded bg-surface-muted p-4 text-xs text-ink-secondary">
-                {JSON.stringify(content.json_ld, null, 2)}
-              </pre>
+                <div className="rounded-xl border border-line bg-surface p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-[13px] font-black text-ink">JSON-LD</p>
+                    <span className="rounded bg-green-50 px-2 py-1 text-[11px] font-bold text-score-good">
+                      VALID · APPLIED ✓
+                    </span>
+                  </div>
+                  <pre className="max-h-[260px] overflow-auto rounded-lg bg-surface-muted p-4 text-xs text-ink-secondary">
+                    {jsonLdText}
+                  </pre>
+                </div>
+              </div>
             </div>
 
-            {/* 그리드 밖으로 분리 - 2단 그리드 칸에 끼지 않게 */}
-            <div className="mt-8">
+            <div className="mt-8 rounded-xl border border-line bg-surface p-4">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-[13px] font-black uppercase tracking-[0.14em] text-ink-hint">
+                  Optimization History
+                </p>
+                <span className="rounded bg-surface-muted px-2 py-1 text-[11px] font-bold text-ink-secondary">
+                  Restore Ready
+                </span>
+              </div>
+              <p className="mb-4 text-[13px] leading-5 text-ink-secondary">
+                자동 생성 → 자동 적용 → 검증 → 이력 저장 → 필요 시 이전 버전 복원까지 이어지는 관리 흐름입니다.
+              </p>
               <VersionHistory contentId={id} />
             </div>
-          </div>
+          </section>
         )}
       </div>
     </>

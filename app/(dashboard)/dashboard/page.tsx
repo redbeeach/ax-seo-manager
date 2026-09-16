@@ -3,6 +3,31 @@ import Link from 'next/link'
 import { calculateScores } from '@/lib/score/calculate'
 export const dynamic = 'force-dynamic'
 
+interface DashboardContentRecord {
+  id: string
+  title: string
+  body: string | null
+  seo_title: string | null
+  meta_description: string | null
+  og_title: string | null
+  og_description: string | null
+  faq_json: { question: string; answer: string }[] | null
+  ae_answer: string | null
+  geo_summary: string | null
+  json_ld: Record<string, unknown> | null
+  canonical_url: string | null
+  robots_index: boolean | null
+  robots_follow: boolean | null
+  page_slug: string | null
+  gb5_bo_table: string | null
+  gb5_wr_id: string | number | null
+}
+
+interface DashboardLiveRecord {
+  content_id: string
+  content_score: number
+}
+
 function getGrade(score: number) {
   if (score >= 90) return { grade: 'A+', color: '#22c55e' }
   if (score >= 80) return { grade: 'A',  color: '#22c55e' }
@@ -30,10 +55,12 @@ const TIPS: Record<string, string> = {
 }
 
 export default async function DashboardPage() {
-  const [{ data: contents }, { data: liveAnalyses }] = await Promise.all([
+  const [{ data: contentsData }, { data: liveAnalysesData }] = await Promise.all([
     supabaseAdmin.from('contents').select('*'),
     supabaseAdmin.from('content_live_analyses').select('content_id, content_score'),
   ])
+  const contents = (contentsData ?? []) as unknown as DashboardContentRecord[]
+  const liveAnalyses = (liveAnalysesData ?? []) as unknown as DashboardLiveRecord[]
 
   const liveMap = Object.fromEntries(
     (liveAnalyses ?? []).map((l) => [l.content_id, l.content_score as number])

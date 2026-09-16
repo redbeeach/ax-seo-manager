@@ -3,17 +3,27 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { analyzeContent } from '@/lib/score/content-analysis'
 import { fetchLivePageContent } from '@/lib/gb5/crawl'
 
+interface CrawlContentRecord {
+  id: string
+  title: string | null
+  canonical_url: string | null
+  page_slug: string | null
+  gb5_bo_table: string | null
+  gb5_wr_id: string | number | null
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
 
-  const { data: content, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('contents')
     .select('id, title, canonical_url, page_slug, gb5_bo_table, gb5_wr_id')
     .eq('id', id)
     .single()
+  const content = data as CrawlContentRecord | null
 
   if (error || !content) {
     return NextResponse.json({ error: '콘텐츠를 찾을 수 없습니다.' }, { status: 404 })

@@ -21,6 +21,26 @@ interface AiResult {
   geo_summary: string
 }
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+
+interface ExistingContent {
+  created_at: string | null
+  gb5_bo_table: string | null
+  gb5_wr_id: string | null
+  page_slug: string | null
+  seo_title: string | null
+  meta_description: string | null
+  og_title: string | null
+  og_description: string | null
+  faq_json: JsonValue | null
+  ae_answer: string | null
+  geo_summary: string | null
+  json_ld: JsonValue | null
+  seo_score: number | null
+  aeo_score: number | null
+  geo_score: number | null
+}
+
 async function callOpenAI(title: string, body: string): Promise<AiResult> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
@@ -89,16 +109,16 @@ export async function POST(request: NextRequest) {
 
     let publishedAt = new Date().toISOString()
     let pageUrl = id ? `${SITE_URL}/contents/${id}` : SITE_URL
-    let existing: Record<string, any> | null = null
+    let existing: ExistingContent | null = null
 
     if (id) {
       const { data } = await supabaseAdmin
         .from('contents')
-        .select('created_at, gb5_bo_table, gb5_wr_id, page_slug')
+        .select('created_at, gb5_bo_table, gb5_wr_id, page_slug, seo_title, meta_description, og_title, og_description, faq_json, ae_answer, geo_summary, json_ld, seo_score, aeo_score, geo_score')
         .eq('id', id)
         .single()
 
-      existing = data
+      existing = data as ExistingContent | null
 
       if (existing?.created_at) {
         publishedAt = new Date(existing.created_at).toISOString()
@@ -172,7 +192,29 @@ export async function POST(request: NextRequest) {
     })
 
     if (id) {
-      const contentUpdate: Record<string, any> = {
+      if (existing) {
+        try {
+          await supabaseAdmin.from('content_versions').insert({
+            content_id: id,
+            label: 'Before AI Optimization',
+            seo_title: existing.seo_title ?? null,
+            meta_description: existing.meta_description ?? null,
+            og_title: existing.og_title ?? null,
+            og_description: existing.og_description ?? null,
+            faq_json: existing.faq_json ?? null,
+            ae_answer: existing.ae_answer ?? null,
+            geo_summary: existing.geo_summary ?? null,
+            json_ld: existing.json_ld ?? null,
+            seo_score: existing.seo_score ?? 0,
+            aeo_score: existing.aeo_score ?? 0,
+            geo_score: existing.geo_score ?? 0,
+          })
+        } catch (versionErr) {
+          console.error('[content-version-before-save-error]', versionErr)
+        }
+      }
+
+      const contentUpdate: Record<string, string | number | JsonValue> = {
         seo_title: aiResult.seo_title,
         meta_description: aiResult.meta_description,
         og_title: aiResult.og_title,
@@ -202,6 +244,7 @@ export async function POST(request: NextRequest) {
       try {
         await supabaseAdmin.from('content_versions').insert({
           content_id: id,
+          label: 'AI Optimization',
           seo_title: aiResult.seo_title,
           meta_description: aiResult.meta_description,
           og_title: aiResult.og_title,

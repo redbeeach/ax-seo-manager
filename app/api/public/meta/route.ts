@@ -5,12 +5,37 @@ import { buildLiveUrl } from '@/lib/gb5/url'
 
 const AUTHOR_NAME = process.env.NEXT_PUBLIC_AUTHOR_NAME || '관리자'
 
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+
+type PublicMetaContent = {
+  title: string | null
+  body: string | null
+  seo_title: string | null
+  meta_description: string | null
+  og_title: string | null
+  og_description: string | null
+  json_ld: JsonValue | null
+  canonical_url: string | null
+  robots_index: boolean | null
+  robots_follow: boolean | null
+  page_slug: string | null
+  gb5_bo_table: string | null
+  gb5_wr_id: string | number | null
+}
+
+function getAuthorName(jsonLd: JsonValue | null) {
+  if (!jsonLd || typeof jsonLd !== 'object' || Array.isArray(jsonLd)) return AUTHOR_NAME
+  const author = jsonLd.author
+  if (!author || typeof author !== 'object' || Array.isArray(author)) return AUTHOR_NAME
+  return typeof author.name === 'string' ? author.name : AUTHOR_NAME
+}
+
 export async function GET(request: NextRequest) {
   const url = new URL(request.url)
   const id = url.searchParams.get('id')
   const boTable = url.searchParams.get('bo_table')
   const wrId = url.searchParams.get('wr_id')
-  const slug = url.searchParams.get('slug') // 고정 페이지(회사소개, 오시는길 등) 식별자
+  const slug = url.searchParams.get('slug')
 
   let query = supabaseAdmin
     .from('contents')
@@ -37,29 +62,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: '콘텐츠를 찾을 수 없습니다.' }, { status: 404 })
   }
 
-  const { primary, secondary } = analyzeKeywords(data.title ?? '', data.body ?? '')
+  const content = data as PublicMetaContent
+  const { primary, secondary } = analyzeKeywords(content.title ?? '', content.body ?? '')
   const keywords = [...primary, ...secondary.map((k) => k.word)]
     .filter((w, i, arr) => arr.indexOf(w) === i)
     .slice(0, 10)
     .join(',')
 
-  const jsonLd = data.json_ld as Record<string, any> | null
-  const authorName = jsonLd?.author?.name || AUTHOR_NAME
-
-  const canonicalUrl = buildLiveUrl(data)
-  const robotsIndex = data.robots_index !== false
-  const robotsFollow = data.robots_follow !== false
+  const canonicalUrl = buildLiveUrl(content)
+  const robotsIndex = content.robots_index !== false
+  const robotsFollow = content.robots_follow !== false
   const robotsContent = `${robotsIndex ? 'index' : 'noindex'},${robotsFollow ? 'follow' : 'nofollow'}`
 
   return NextResponse.json(
     {
-      seo_title: data.seo_title,
-      meta_description: data.meta_description,
-      og_title: data.og_title,
-      og_description: data.og_description,
-      json_ld: data.json_ld,
+      seo_title: content.seo_title,
+      meta_description: content.meta_description,
+      og_title: content.og_title,
+      og_description: content.og_description,
+      json_ld: content.json_ld,
       keywords,
-      author: authorName,
+      author: getAuthorName(content.json_ld),
       canonical_url: canonicalUrl,
       robots: robotsContent,
     },

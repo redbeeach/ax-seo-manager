@@ -13,9 +13,6 @@ interface Version {
   created_at: string
 }
 
-// created_at이 타임존 표시 없이 내려오는 경우(예: '2026-06-29T16:04:39')
-// UTC로 저장된 값을 로컬시간으로 잘못 해석하는 문제를 막기 위해
-// 'Z'가 없으면 붙여서 명시적으로 UTC로 해석시킨 뒤 한국시간으로 변환
 function formatKstDateTime(value: string) {
   const isoValue = /Z$|[+-]\d{2}:?\d{2}$/.test(value) ? value : value + 'Z'
   return new Date(isoValue).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })
@@ -27,15 +24,20 @@ function scoreColorClass(score: number) {
   return 'text-score-bad'
 }
 
+function versionLabel(version: Version, index: number) {
+  if (version.label) return version.label
+  if (index === 0) return 'Current Snapshot'
+  return 'Saved Version'
+}
+
 export default function VersionHistory({ contentId }: { contentId: string }) {
   const router = useRouter()
   const [versions, setVersions] = useState<Version[]>([])
   const [loading, setLoading] = useState(true)
   const [restoringId, setRestoringId] = useState<string | null>(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)
 
-  const load = async () => {
-    setLoading(true)
+  const loadVersions = async () => {
     const res = await fetch(`/api/contents/${contentId}/versions`)
     if (res.ok) {
       setVersions(await res.json())
@@ -44,12 +46,26 @@ export default function VersionHistory({ contentId }: { contentId: string }) {
   }
 
   useEffect(() => {
-    if (open) load()
-  }, [open])
+    if (!open) return
+    let canceled = false
+
+    fetch(`/api/contents/${contentId}/versions`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => {
+        if (!canceled) setVersions(data)
+      })
+      .finally(() => {
+        if (!canceled) setLoading(false)
+      })
+
+    return () => {
+      canceled = true
+    }
+  }, [contentId, open])
 
   const handleRestore = async (versionId: string) => {
     const confirmed = window.confirm(
-      '이 버전으로 복원하면 현재 적용된 메타데이터가 덮어씌워집니다. 계속할까요?'
+      '선택한 버전으로 복원할까요? 현재 적용된 최적화 데이터는 이전 버전 값으로 교체됩니다.'
     )
     if (!confirmed) return
 
@@ -68,7 +84,7 @@ export default function VersionHistory({ contentId }: { contentId: string }) {
   }
 
   const handleLabel = async (versionId: string, currentLabel: string | null) => {
-    const newLabel = window.prompt('이 버전에 메모를 남기세요 (예: 이게 제일 좋음)', currentLabel ?? '')
+    const newLabel = window.prompt('이 버전에 남길 메모를 입력하세요.', currentLabel ?? '')
     if (newLabel === null) return
 
     const res = await fetch(`/api/contents/${contentId}/versions`, {
@@ -76,16 +92,22 @@ export default function VersionHistory({ contentId }: { contentId: string }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ versionId, label: newLabel }),
     })
-    if (res.ok) load()
+    if (res.ok) {
+      setLoading(true)
+      await loadVersions()
+    }
   }
 
   return (
-    <div className="border-t border-line pt-6">
+    <div>
       <button
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) setLoading(true)
+          setOpen((v) => !v)
+        }}
         className="flex items-center gap-1.5 text-[15px] font-bold text-ink"
       >
-        버전 기록 {open ? '▾' : '▸'}
+        버전 기록 {open ? '접기' : '펼치기'}
       </button>
 
       {open && (
@@ -93,39 +115,47 @@ export default function VersionHistory({ contentId }: { contentId: string }) {
           {loading && <p className="text-sm text-ink-hint">불러오는 중...</p>}
 
           {!loading && versions.length === 0 && (
-            <p className="text-sm text-ink-hint">아직 저장된 버전이 없습니다.</p>
+            <p className="text-sm text-ink-hint">
+              아직 저장된 버전이 없습니다. AI 최적화를 실행하면 적용 전/후 스냅샷이 자동 저장됩니다.
+            </p>
           )}
 
           <ul className="space-y-2">
-            {versions.map((v) => (
+            {versions.map((v, index) => (
               <li
                 key={v.id}
-                className="flex items-center justify-between rounded border border-line px-4 py-3"
+                className="flex items-center justify-between gap-4 rounded-lg border border-line px-4 py-3"
               >
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-medium text-ink">
-                      {formatKstDateTime(v.created_at)}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[13px] font-bold text-ink">
+                      v{versions.length - index}
                     </span>
-                    {v.label && (
-                      <span className="rounded bg-surface-muted px-2 py-0.5 text-[11px] text-ink-secondary">
-                        {v.label}
+                    {index === 0 && (
+                      <span className="rounded bg-ink px-2 py-0.5 text-[11px] font-bold text-white">
+                        CURRENT
                       </span>
                     )}
+                    <span className="rounded bg-surface-muted px-2 py-0.5 text-[11px] text-ink-secondary">
+                      {versionLabel(v, index)}
+                    </span>
+                    <span className="text-[12px] text-ink-hint">
+                      {formatKstDateTime(v.created_at)}
+                    </span>
                   </div>
                   <p className="mt-1 flex gap-2 text-[12px] text-ink-hint">
                     <span>
-                      SEO <span className={scoreColorClass(v.seo_score ?? 0)}>{v.seo_score}</span>
+                      SEO <span className={scoreColorClass(v.seo_score ?? 0)}>{v.seo_score ?? 0}</span>
                     </span>
                     <span>
-                      AEO <span className={scoreColorClass(v.aeo_score ?? 0)}>{v.aeo_score}</span>
+                      AEO <span className={scoreColorClass(v.aeo_score ?? 0)}>{v.aeo_score ?? 0}</span>
                     </span>
                     <span>
-                      GEO <span className={scoreColorClass(v.geo_score ?? 0)}>{v.geo_score}</span>
+                      GEO <span className={scoreColorClass(v.geo_score ?? 0)}>{v.geo_score ?? 0}</span>
                     </span>
                   </p>
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex shrink-0 gap-1.5">
                   <button
                     onClick={() => handleLabel(v.id, v.label)}
                     className="rounded border border-line px-2.5 py-1 text-[12px] text-ink-secondary hover:bg-surface-muted"
@@ -135,7 +165,7 @@ export default function VersionHistory({ contentId }: { contentId: string }) {
                   <button
                     onClick={() => handleRestore(v.id)}
                     disabled={restoringId === v.id}
-                    className="rounded border border-accent px-2.5 py-1 text-[12px] font-medium text-accent hover:bg-surface-muted disabled:opacity-50"
+                    className="rounded border border-ink px-2.5 py-1 text-[12px] font-bold text-ink hover:bg-surface-muted disabled:opacity-50"
                   >
                     {restoringId === v.id ? '복원 중...' : '이 버전으로 복원'}
                   </button>

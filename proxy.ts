@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = [
   "/login",
+  "/geo",
   "/api/gb5/sync",
+  "/api/geo/audit",
   "/api/public/meta",
   "/preview",
 ];

@@ -2,6 +2,18 @@ import { supabaseAdmin } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
+interface PreviewContentRecord {
+  id: string
+  title: string
+  body: string
+  seo_title: string | null
+  meta_description: string | null
+  og_title: string | null
+  og_description: string | null
+  ae_answer: string | null
+  geo_summary: string | null
+}
+
 export default async function PreviewPage({
   params,
 }: {
@@ -9,11 +21,12 @@ export default async function PreviewPage({
 }) {
   const { id } = await params
 
-  const { data: content, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('contents')
     .select('*')
     .eq('id', id)
     .single()
+  const content = data as PreviewContentRecord | null
 
   if (error || !content) {
     notFound()
