@@ -1,3 +1,5 @@
+import { getGb5Hostname } from '@/lib/gb5/url'
+
 interface ScoreBreakdownItem {
   label: string
   points: number
@@ -54,6 +56,7 @@ function getLinkStats(html: string): { internal: number; external: number } {
   const anchorTags = html.match(/<a\b[^>]*href\s*=\s*["'][^"']*["'][^>]*>/gi) ?? []
   let internal = 0
   let external = 0
+  const ownDomainHint = getGb5Hostname()
 
   for (const tag of anchorTags) {
     const hrefMatch = tag.match(/href\s*=\s*["']([^"']*)["']/i)
@@ -64,7 +67,7 @@ function getLinkStats(html: string): { internal: number; external: number } {
       continue
     }
 
-    const isExternal = /^https?:\/\//i.test(href) && !href.includes('hby1126hh.mycafe24.com')
+    const isExternal = /^https?:\/\//i.test(href) && (!ownDomainHint || !href.includes(ownDomainHint))
     if (isExternal) {
       external += 1
     } else {

@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { calculateScores } from '@/lib/score/calculate'
+import { buildGb5PageUrl, buildGb5PostUrl } from '@/lib/gb5/url'
 export const dynamic = 'force-dynamic'
 
 interface ContentListRecord {
@@ -143,14 +144,14 @@ export default async function ContentsListPage() {
                     </span>
                   )}
                   {c.gb5_bo_table && c.gb5_wr_id && (
-                    <a href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${c.gb5_bo_table}&wr_id=${c.gb5_wr_id}`}
+                    <a href={buildGb5PostUrl(c.gb5_bo_table, c.gb5_wr_id)}
                       target="_blank" rel="noopener noreferrer"
                       className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent">
                       GB5 ↗
                     </a>
                   )}
                   {c.page_slug && (
-                    <a href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${c.page_slug}.php`}
+                    <a href={buildGb5PageUrl(c.page_slug)}
                       target="_blank" rel="noopener noreferrer"
                       className="shrink-0 rounded border border-line px-1.5 py-0.5 text-[11px] text-ink-hint hover:border-accent hover:text-accent">
                       {c.page_slug} ↗

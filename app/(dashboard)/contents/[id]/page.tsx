@@ -5,7 +5,7 @@ import Link from 'next/link'
 import DeleteButton from '@/components/DeleteButton'
 import AiOptimizeButton from '@/components/AiOptimizeButton'
 import { calculateScores } from '@/lib/score/calculate'
-import { buildLiveUrl } from '@/lib/gb5/url'
+import { buildGb5PageUrl, buildGb5PostUrl, buildLiveUrl } from '@/lib/gb5/url'
 import { htmlToText } from '@/lib/gb5/crawl'
 import { analyzeKeywords } from '@/lib/keywords/analyze'
 import VersionHistory from '@/components/VersionHistory'
@@ -284,7 +284,7 @@ export default async function ContentDetailPage({
               </h1>
               {content.gb5_bo_table && content.gb5_wr_id && (
                 <a
-                  href={`https://hby1126hh.mycafe24.com/g5/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`}
+                  href={buildGb5PostUrl(content.gb5_bo_table, content.gb5_wr_id)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"
@@ -295,7 +295,7 @@ export default async function ContentDetailPage({
               )}
               {content.page_slug && (
                 <a
-                  href={`https://hby1126hh.mycafe24.com/g5${process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'}/${content.page_slug}.php`}
+                  href={buildGb5PageUrl(content.page_slug)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="rounded border border-line px-2 py-1 text-xs text-ink-hint hover:border-accent hover:text-accent"

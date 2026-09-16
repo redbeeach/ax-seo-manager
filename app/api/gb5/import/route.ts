@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { fetchLivePageContent, htmlToText } from '@/lib/gb5/crawl'
+import { buildGb5ExportUrl } from '@/lib/gb5/url'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,12 +69,7 @@ function normalizeLimit(value: unknown) {
 }
 
 function buildEndpoint() {
-  if (process.env.GB5_IMPORT_ENDPOINT) return process.env.GB5_IMPORT_ENDPOINT
-
-  const baseUrl = process.env.NEXT_PUBLIC_GB5_URL?.replace(/\/+$/, '')
-  if (!baseUrl) return ''
-
-  return `${baseUrl}/ax-seo-export.php`
+  return buildGb5ExportUrl()
 }
 
 function configuredDefaults() {
@@ -243,7 +239,7 @@ export async function POST(request: NextRequest) {
   const endpoint = buildEndpoint()
   if (!endpoint) {
     return NextResponse.json(
-      { error: 'GB5_IMPORT_ENDPOINT or NEXT_PUBLIC_GB5_URL is not configured.' },
+      { error: 'NEXT_PUBLIC_GB5_URL is not configured.' },
       { status: 500 }
     )
   }

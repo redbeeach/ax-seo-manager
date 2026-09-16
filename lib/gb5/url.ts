@@ -5,8 +5,47 @@ interface UrlSource {
   gb5_wr_id?: string | number | null
 }
 
-const GB5_BASE = 'https://hby1126hh.mycafe24.com/g5'
-const GB5_SUBPAGE_PATH = process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH ?? '/sub'
+const DEFAULT_GB5_SUBPAGE_PATH = '/sub'
+
+function stripTrailingSlash(value: string) {
+  return value.replace(/\/+$/, '')
+}
+
+function normalizePath(value: string | undefined, fallback: string) {
+  const path = value?.trim() || fallback
+  return path.startsWith('/') ? stripTrailingSlash(path) : `/${stripTrailingSlash(path)}`
+}
+
+export function getGb5BaseUrl() {
+  return stripTrailingSlash(process.env.NEXT_PUBLIC_GB5_URL || '')
+}
+
+export function getGb5SubpagePath() {
+  return normalizePath(process.env.NEXT_PUBLIC_GB5_SUBPAGE_PATH, DEFAULT_GB5_SUBPAGE_PATH)
+}
+
+export function getGb5Hostname() {
+  try {
+    return new URL(getGb5BaseUrl()).hostname
+  } catch {
+    return ''
+  }
+}
+
+export function buildGb5PostUrl(boTable: string, wrId: string | number) {
+  const baseUrl = getGb5BaseUrl()
+  return baseUrl ? `${baseUrl}/bbs/board.php?bo_table=${boTable}&wr_id=${wrId}` : ''
+}
+
+export function buildGb5PageUrl(pageSlug: string) {
+  const baseUrl = getGb5BaseUrl()
+  return baseUrl ? `${baseUrl}${getGb5SubpagePath()}/${pageSlug}.php` : ''
+}
+
+export function buildGb5ExportUrl() {
+  const baseUrl = getGb5BaseUrl()
+  return baseUrl ? `${baseUrl}/ax-seo-export.php` : ''
+}
 
 export function isValidHttpUrl(value: string): boolean {
   try {
@@ -41,11 +80,11 @@ export function buildLiveUrl(content: UrlSource): string | null {
   }
 
   if (content.page_slug) {
-    return `${GB5_BASE}${GB5_SUBPAGE_PATH}/${content.page_slug}.php`
+    return buildGb5PageUrl(content.page_slug)
   }
 
   if (content.gb5_bo_table && content.gb5_wr_id) {
-    return `${GB5_BASE}/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`
+    return buildGb5PostUrl(content.gb5_bo_table, content.gb5_wr_id)
   }
 
   return null
@@ -58,11 +97,11 @@ export function buildLiveUrl(content: UrlSource): string | null {
  */
 export function buildCrawlTargetUrl(content: UrlSource): string | null {
   if (content.page_slug) {
-    return `${GB5_BASE}${GB5_SUBPAGE_PATH}/${content.page_slug}.php`
+    return buildGb5PageUrl(content.page_slug)
   }
 
   if (content.gb5_bo_table && content.gb5_wr_id) {
-    return `${GB5_BASE}/bbs/board.php?bo_table=${content.gb5_bo_table}&wr_id=${content.gb5_wr_id}`
+    return buildGb5PostUrl(content.gb5_bo_table, content.gb5_wr_id)
   }
 
   return null
