@@ -7,11 +7,14 @@
 
 .header {
   display: flex;
-  width: min(1120px, calc(100% - 40px));
-  height: 76px;
+  width: 100%;
+  max-width: 1720px;
+  height: 80px;
   align-items: center;
   justify-content: space-between;
   margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 .brand,
