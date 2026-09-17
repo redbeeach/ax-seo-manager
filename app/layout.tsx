@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { siteUrl, siteTitle, siteDescription } from "@/lib/site-metadata";
 
 export const metadata: Metadata = {
-  title: "AX SEO Manager — 그누보드5 AI 검색 최적화 솔루션",
-  description:
-    "그누보드5 게시글을 SEO, AEO, GEO, JSON-LD 초안으로 자동 최적화하는 AI 검색 최적화 솔루션입니다.",
+  metadataBase: siteUrl,
+  title: siteTitle,
+  description: siteDescription,
+  applicationName: "AX SEO Manager",
+  authors: [{ name: "AX SEO Manager" }],
+  creator: "AX SEO Manager",
+  keywords: ["SEO", "AEO", "GEO", "그누보드5", "AI 검색 최적화", "메타태그", "사이트 진단"],
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

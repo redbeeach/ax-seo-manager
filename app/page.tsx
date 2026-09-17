@@ -3,6 +3,9 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import Link from "next/link";
 import styles from "./page.module.css";
+import { publicPageMetadata, siteTitle, siteDescription } from "@/lib/site-metadata";
+
+export const metadata = publicPageMetadata(siteTitle, siteDescription, "/");
 
 const hasWorkPreview = existsSync(join(process.cwd(), "public", "work_01.webp"));
 
