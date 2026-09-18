@@ -25,10 +25,10 @@ const cx = (...classNames: Array<string | false | null | undefined>) =>
   classNames.filter(Boolean).join(" ");
 
 const stats = [
-  ["Target Engine", "Google · ChatGPT · Perplexity", "white"],
-  ["Automated Output", "Title · Meta · FAQ · JSON-LD", "indigo"],
-  ["Analysis Method", "Live DOM + 7가지 정밀 지표", "emerald"],
-  ["Integration", "기존 글 가져오기 · 새 글 동기화 · 서브페이지", "white"],
+  ["OPTIMIZATION TARGET", "Google · ChatGPT · Perplexity", "white"],
+  ["ANALYSIS ENGINE", "Live HTML · SEO · AEO · GEO · 7 Metrics", "emerald"],
+  ["AI AUTOMATION", "Meta · FAQ · Answer · Summary · JSON-LD", "indigo"],
+  ["CMS PIPELINE", "GNUboard Import · Sync · Apply · Verify", "white"],
 ] satisfies Array<[string, string, ColorName]>;
 
 const aiOutputs = [
